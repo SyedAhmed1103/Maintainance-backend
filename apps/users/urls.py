@@ -1,76 +1,62 @@
 from django.urls import path
 
 from .views import (
-
-    RegisterView,
-    LoginView,
-
-    UserListView,
-    UserDetailView,
-    UpdateUserView,
-    DeleteUserView,
-
-    ForgotPasswordView,
-    ResetPasswordView,
+    UserCreateAPIView,
+    UserListAPIView,
+    UserDetailAPIView,
+    UserUpdateAPIView,
+    UserDeleteAPIView,
 )
-
 
 urlpatterns = [
 
-    # ==========================================
-    # AUTH APIs
-    # ==========================================
+    # ==================================================
+    # CREATE USER
+    # ==================================================
 
     path(
-        'register/',
-        RegisterView.as_view(),
-        name='register'
+        'create/',
+        UserCreateAPIView.as_view(),
+        name='user-create'
     ),
 
-    path(
-        'login/',
-        LoginView.as_view(),
-        name='login'
-    ),
-
-    path(
-        'forgot-password/',
-        ForgotPasswordView.as_view(),
-        name='forgot-password'
-    ),
-
-    path(
-        'reset-password/',
-        ResetPasswordView.as_view(),
-        name='reset-password'
-    ),
-
-
-    # ==========================================
-    # USER CRUD APIs
-    # ==========================================
+    # ==================================================
+    # USER LIST
+    # ==================================================
 
     path(
         '',
-        UserListView.as_view(),
+        UserListAPIView.as_view(),
         name='user-list'
     ),
 
+    # ==================================================
+    # USER DETAILS
+    # ==================================================
+
     path(
-        '<int:id>/',
-        UserDetailView.as_view(),
+        '<int:pk>/',
+        UserDetailAPIView.as_view(),
         name='user-detail'
     ),
 
-    path(
-        'update/<int:id>/',
-        UpdateUserView.as_view(),
-        name='update-user'
-    ),
+    # ==================================================
+    # UPDATE USER
+    # ==================================================
 
     path(
-        'delete/<int:id>/',
-        DeleteUserView.as_view(),
-        name='delete-user'
+        'update/<int:pk>/',
+        UserUpdateAPIView.as_view(),
+        name='user-update'
+    ),
+
+    # ==================================================
+    # DELETE USER
+    # ==================================================
+
+    path(
+        'delete/<int:pk>/',
+        UserDeleteAPIView.as_view(),
+        name='user-delete'
     ),
 ]

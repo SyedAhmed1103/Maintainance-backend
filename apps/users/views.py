@@ -1,32 +1,23 @@
-from rest_framework.generics import GenericAPIView
+from django.db.models import Q
+
+from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
 
-from django.contrib.auth.hashers import make_password, check_password
-from django.core.mail import send_mail
-from django.utils.crypto import get_random_string
-
 from .models import User
-
-from .serializers import (
-    RegisterSerializer,
-    LoginSerializer,
-    UserSerializer,
-    UpdateUserSerializer,
-    ForgotPasswordSerializer,
-    ResetPasswordSerializer
-)
+from .serializers import UserSerializer
 
 
-# ==========================================
-# REGISTER API
-# ==========================================
+# =========================================================
+# CREATE USER
+# =========================================================
 
-class RegisterView(GenericAPIView):
+class UserCreateAPIView(generics.CreateAPIView):
 
-    serializer_class = RegisterSerializer
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
-    def post(self, request):
+    def create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(
             data=request.data
@@ -34,397 +25,247 @@ class RegisterView(GenericAPIView):
 
         if serializer.is_valid():
 
-            email = serializer.validated_data['email']
+            user = serializer.save()
 
-            phone = serializer.validated_data['phone']
-
-            password = serializer.validated_data['password']
-
-            if User.objects.filter(email=email).exists():
-
-                return Response(
-                    {
-                        'status': False,
-                        'message': 'Email already exists'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            if User.objects.filter(phone=phone).exists():
-
-                return Response(
-                    {
-                        'status': False,
-                        'message': 'Phone already exists'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            user = User.objects.create(
-
-                first_name=serializer.validated_data['first_name'],
-
-                last_name=serializer.validated_data.get(
-                    'last_name'
-                ),
-
-                email=email,
-
-                phone=phone,
-
-                building_id=serializer.validated_data.get(
-                    'building_id'
-                ),
-
-                user_type=serializer.validated_data.get(
-                    'user_type'
-                ),
+            password = request.data.get(
+                'password'
             )
 
-            user.password = make_password(password)
+            if password:
 
-            user.save()
+                user.set_password(password)
+                user.save()
 
             return Response(
                 {
-                    'status': True,
-                    'message': 'User registered successfully',
-                    'data': UserSerializer(user).data
+                    "success": True,
+                    "message": "User created successfully.",
+                    "data": serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
 
         return Response(
-            serializer.errors,
+            {
+                "success": False,
+                "message": "Validation error.",
+                "errors": serializer.errors
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
 
-# ==========================================
-# LOGIN API
-# ==========================================
+# =========================================================
+# USER LIST
+# =========================================================
 
-class LoginView(GenericAPIView):
-
-    serializer_class = LoginSerializer
-
-    def post(self, request):
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
-
-        if serializer.is_valid():
-
-            email = serializer.validated_data['email']
-
-            password = serializer.validated_data['password']
-
-            try:
-
-                user = User.objects.get(email=email)
-
-            except User.DoesNotExist:
-
-                return Response(
-                    {
-                        'status': False,
-                        'message': 'Invalid email'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            if not check_password(password, user.password):
-
-                return Response(
-                    {
-                        'status': False,
-                        'message': 'Invalid password'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            return Response(
-                {
-                    'status': True,
-                    'message': 'Login successful',
-                    'data': UserSerializer(user).data
-                },
-                status=status.HTTP_200_OK
-            )
-
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-# ==========================================
-# USER LIST API
-# ==========================================
-
-class UserListView(GenericAPIView):
+class UserListAPIView(generics.ListAPIView):
 
     serializer_class = UserSerializer
 
-    def get(self, request):
+    def get_queryset(self):
 
-        users = User.objects.all().order_by('-id')
+        search = self.request.GET.get(
+            'search',
+            ''
+        )
+
+        user_type = self.request.GET.get(
+            'user_type',
+            ''
+        )
+
+        building_id = self.request.GET.get(
+            'building_id',
+            ''
+        )
+
+        is_verified = self.request.GET.get(
+            'is_verified',
+            ''
+        )
+
+        queryset = User.objects.select_related(
+            'building',
+            'flat'
+        ).order_by('-id')
+
+        if search:
+
+            queryset = queryset.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(mobile__icontains=search)
+            )
+
+        if user_type:
+
+            queryset = queryset.filter(
+                user_type=user_type
+            )
+
+        if building_id:
+
+            queryset = queryset.filter(
+                building_id=building_id
+            )
+
+        if is_verified != '':
+
+            if is_verified.lower() == 'true':
+
+                queryset = queryset.filter(
+                    is_verified=True
+                )
+
+            elif is_verified.lower() == 'false':
+
+                queryset = queryset.filter(
+                    is_verified=False
+                )
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+
+        queryset = self.get_queryset()
 
         serializer = self.get_serializer(
-            users,
+            queryset,
             many=True
         )
 
         return Response(
             {
-                'status': True,
-                'count': users.count(),
-                'data': serializer.data
-            }
+                "success": True,
+                "message": "User list fetched successfully.",
+                "count": queryset.count(),
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
         )
 
 
-# ==========================================
-# USER DETAIL API
-# ==========================================
+# =========================================================
+# USER DETAILS
+# =========================================================
 
-class UserDetailView(GenericAPIView):
+class UserDetailAPIView(generics.RetrieveAPIView):
+
+    queryset = User.objects.select_related(
+        'building',
+        'flat'
+    )
 
     serializer_class = UserSerializer
+    lookup_field = 'pk'
 
-    def get_object(self, id):
+    def retrieve(self, request, *args, **kwargs):
 
-        try:
-            return User.objects.get(id=id)
+        instance = self.get_object()
 
-        except User.DoesNotExist:
-            return None
-
-    def get(self, request, id):
-
-        user = self.get_object(id)
-
-        if not user:
-
-            return Response(
-                {
-                    'status': False,
-                    'message': 'User not found'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-        serializer = self.get_serializer(user)
+        serializer = self.get_serializer(
+            instance
+        )
 
         return Response(
             {
-                'status': True,
-                'data': serializer.data
-            }
+                "success": True,
+                "message": "User details fetched successfully.",
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
         )
 
 
-# ==========================================
-# UPDATE USER API
-# ==========================================
+# =========================================================
+# UPDATE USER
+# =========================================================
 
-class UpdateUserView(GenericAPIView):
+class UserUpdateAPIView(generics.UpdateAPIView):
 
-    serializer_class = UpdateUserSerializer
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'pk'
 
-    def get_object(self, id):
+    def update(self, request, *args, **kwargs):
 
-        try:
-            return User.objects.get(id=id)
+        partial = kwargs.pop(
+            'partial',
+            False
+        )
 
-        except User.DoesNotExist:
-            return None
-
-    def put(self, request, id):
-
-        user = self.get_object(id)
-
-        if not user:
-
-            return Response(
-                {
-                    'status': False,
-                    'message': 'User not found'
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+        instance = self.get_object()
 
         serializer = self.get_serializer(
-            user,
+            instance,
             data=request.data,
-            partial=True
+            partial=partial
         )
 
         if serializer.is_valid():
 
-            serializer.save()
+            user = serializer.save()
 
-            return Response(
-                {
-                    'status': True,
-                    'message': 'User updated successfully',
-                    'data': serializer.data
-                }
+            password = request.data.get(
+                'password'
             )
 
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
+            if password:
 
-
-# ==========================================
-# DELETE USER API
-# ==========================================
-
-class DeleteUserView(GenericAPIView):
-
-    def delete(self, request, id):
-
-        try:
-
-            user = User.objects.get(id=id)
-
-        except User.DoesNotExist:
+                user.set_password(password)
+                user.save()
 
             return Response(
                 {
-                    'status': False,
-                    'message': 'User not found'
+                    "success": True,
+                    "message": "User updated successfully.",
+                    "data": serializer.data
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_200_OK
             )
-
-        user.delete()
 
         return Response(
             {
-                'status': True,
-                'message': 'User deleted successfully'
-            }
-        )
-
-
-# ==========================================
-# FORGOT PASSWORD API
-# ==========================================
-
-class ForgotPasswordView(GenericAPIView):
-
-    serializer_class = ForgotPasswordSerializer
-
-    def post(self, request):
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
- 
-        if serializer.is_valid():
-
-            email = serializer.validated_data['email']
-
-            try:
-
-                user = User.objects.get(email=email)
-
-            except User.DoesNotExist:
-
-                return Response(
-                    {
-                        'status': False,
-                        'message': 'Email not found'
-                    },
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            reset_token = get_random_string(50)
-
-            user.reset_token = reset_token
-
-            user.save()
-
-            reset_link = (
-                f"http://127.0.0.1:8000/api/users/reset-password/"
-                f"{reset_token}"
-            )
-
-            send_mail(
-                subject='Reset Password',
-                message=f'Click here: {reset_link}',
-                from_email='inquiry@itdax.in',
-                recipient_list=[email],
-                fail_silently=False,
-            )
-
-            return Response(
-                {
-                    'status': True,
-                    'message': 'Reset password link sent'
-                }
-            )
-
-        return Response(
-            serializer.errors,
+                "success": False,
+                "message": "Validation error.",
+                "errors": serializer.errors
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    def patch(self, request, *args, **kwargs):
 
-# ==========================================
-# RESET PASSWORD API
-# ==========================================
+        kwargs['partial'] = True
 
-class ResetPasswordView(GenericAPIView):
-
-    serializer_class = ResetPasswordSerializer
-
-    def post(self, request):
-
-        serializer = self.get_serializer(
-            data=request.data
+        return self.update(
+            request,
+            *args,
+            **kwargs
         )
 
-        if serializer.is_valid():
 
-            token = serializer.validated_data['token']
+# =========================================================
+# DELETE USER
+# =========================================================
 
-            password = serializer.validated_data['password']
+class UserDeleteAPIView(generics.DestroyAPIView):
 
-            try:
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'pk'
 
-                user = User.objects.get(
-                    reset_token=token
-                )
+    def destroy(self, request, *args, **kwargs):
 
-            except User.DoesNotExist:
+        instance = self.get_object()
 
-                return Response(
-                    {
-                        'status': False,
-                        'message': 'Invalid token'
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            user.password = make_password(password)
-
-            user.reset_token = None
-
-            user.save()
-
-            return Response(
-                {
-                    'status': True,
-                    'message': 'Password reset successful'
-                }
-            )
+        instance.delete()
 
         return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+            {
+                "success": True,
+                "message": "User deleted successfully."
+            },
+            status=status.HTTP_200_OK
         )

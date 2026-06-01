@@ -70,11 +70,9 @@ class BuildingListAPIView(generics.ListAPIView):
             ''
         )
 
-        queryset = Building.objects.all().order_by('-id')
-
-        # =================================================
-        # SEARCH FILTER
-        # =================================================
+        queryset = Building.objects.select_related(
+            'created_by'
+        ).order_by('-id')
 
         if search:
 
@@ -82,12 +80,9 @@ class BuildingListAPIView(generics.ListAPIView):
                 Q(building_name__icontains=search) |
                 Q(building_code__icontains=search) |
                 Q(city__icontains=search) |
-                Q(state__icontains=search)
+                Q(state__icontains=search) |
+                Q(society_mobile__icontains=search)
             )
-
-        # =================================================
-        # BUILDING TYPE FILTER
-        # =================================================
 
         if building_type:
 
@@ -95,18 +90,16 @@ class BuildingListAPIView(generics.ListAPIView):
                 building_type=building_type
             )
 
-        # =================================================
-        # ACTIVE FILTER
-        # =================================================
-
         if is_active != '':
 
             if is_active.lower() == 'true':
+
                 queryset = queryset.filter(
                     is_active=True
                 )
 
             elif is_active.lower() == 'false':
+
                 queryset = queryset.filter(
                     is_active=False
                 )
@@ -139,7 +132,10 @@ class BuildingListAPIView(generics.ListAPIView):
 
 class BuildingDetailAPIView(generics.RetrieveAPIView):
 
-    queryset = Building.objects.all()
+    queryset = Building.objects.select_related(
+        'created_by'
+    )
+
     serializer_class = BuildingSerializer
     lookup_field = 'pk'
 
@@ -147,7 +143,9 @@ class BuildingDetailAPIView(generics.RetrieveAPIView):
 
         instance = self.get_object()
 
-        serializer = self.get_serializer(instance)
+        serializer = self.get_serializer(
+            instance
+        )
 
         return Response(
             {
@@ -171,7 +169,10 @@ class BuildingUpdateAPIView(generics.UpdateAPIView):
 
     def update(self, request, *args, **kwargs):
 
-        partial = kwargs.pop('partial', False)
+        partial = kwargs.pop(
+            'partial',
+            False
+        )
 
         instance = self.get_object()
 
@@ -202,8 +203,6 @@ class BuildingUpdateAPIView(generics.UpdateAPIView):
             },
             status=status.HTTP_400_BAD_REQUEST
         )
-
-    # PATCH SUPPORT
 
     def patch(self, request, *args, **kwargs):
 

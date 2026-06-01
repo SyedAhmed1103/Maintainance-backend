@@ -35,6 +35,17 @@ class Building(models.Model):
         default=0
     )
 
+    society_email = models.EmailField(
+            blank=True,
+            null=True
+        )
+
+    society_mobile = models.CharField(
+          max_length=15,
+            blank=True,
+            null=True
+            )
+
     total_flats = models.IntegerField(
         default=0
     )
@@ -67,3 +78,4 @@ class Building(models.Model):
 
     def __str__(self):
         return self.building_name
+    

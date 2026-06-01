@@ -5,14 +5,15 @@ from django.contrib.auth.models import AbstractUser
 class User(AbstractUser):
 
     USER_TYPES = (
-        ('admin', 'Admin'),
-        ('resident', 'Resident'),
         ('owner', 'Owner'),
+        ('tenant', 'Tenant'),
     )
 
     username = None
 
-    first_name = models.CharField(max_length=100)
+    first_name = models.CharField(
+        max_length=100
+    )
 
     last_name = models.CharField(
         max_length=100,
@@ -24,7 +25,7 @@ class User(AbstractUser):
         unique=True
     )
 
-    phone = models.CharField(
+    mobile = models.CharField(
         max_length=15,
         unique=True
     )
@@ -32,7 +33,23 @@ class User(AbstractUser):
     user_type = models.CharField(
         max_length=20,
         choices=USER_TYPES,
-        default='resident'
+        default='owner'
+    )
+
+    building = models.ForeignKey(
+        'building.Building',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users'
+    )
+
+    flat = models.ForeignKey(
+        'flats.Flat',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='users'
     )
 
     is_verified = models.BooleanField(
@@ -46,22 +63,14 @@ class User(AbstractUser):
     updated_at = models.DateTimeField(
         auto_now=True
     )
-    reset_token = models.TextField(
-        blank=True,
-        null=True
-    )
-
-    building = models.ForeignKey(
-        'building.Building',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='users'
-    )
 
     USERNAME_FIELD = 'email'
 
-    REQUIRED_FIELDS = ['phone']
+    REQUIRED_FIELDS = ['mobile']
+
+    class Meta:
+        db_table = 'users'
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.email
