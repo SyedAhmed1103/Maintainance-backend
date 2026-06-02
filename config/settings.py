@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'apps.notice',
     'apps.payment',
     'apps.users',
+    'apps.wing',
 ]
 
 
