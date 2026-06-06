@@ -8,7 +8,6 @@ class BuildingSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
 
     class Meta:
-
         model = Building
 
         fields = [
@@ -22,7 +21,6 @@ class BuildingSerializer(serializers.ModelSerializer):
             'total_floors',
             'society_email',
             'society_mobile',
-            'total_flats',
             'building_type',
             'created_by',
             'created_by_name',
@@ -39,33 +37,28 @@ class BuildingSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
 
-    # ==================================================
+    # ==========================================
     # CUSTOM METHODS
-    # ==================================================
+    # ==========================================
 
     def get_created_by_name(self, obj):
 
-        if obj.created_by:
+        if not obj.created_by:
+            return None
 
-            full_name = obj.created_by.get_full_name()
+        full_name = obj.created_by.get_full_name()
 
-            if full_name:
-                return full_name
+        return full_name or obj.created_by.username
 
-            return obj.created_by.username
-
-        return None
-
-    # ==================================================
+    # ==========================================
     # FIELD VALIDATIONS
-    # ==================================================
+    # ==========================================
 
     def validate_building_name(self, value):
 
         value = value.strip()
 
         if len(value) < 3:
-
             raise serializers.ValidationError(
                 "Building name must be at least 3 characters long."
             )
@@ -81,13 +74,11 @@ class BuildingSerializer(serializers.ModelSerializer):
         )
 
         if self.instance:
-
             queryset = queryset.exclude(
-                id=self.instance.id
+                pk=self.instance.pk
             )
 
         if queryset.exists():
-
             raise serializers.ValidationError(
                 "Building code already exists."
             )
@@ -107,13 +98,11 @@ class BuildingSerializer(serializers.ModelSerializer):
         value = value.strip()
 
         if not value.isdigit():
-
             raise serializers.ValidationError(
                 "Pincode must contain only numbers."
             )
 
         if len(value) != 6:
-
             raise serializers.ValidationError(
                 "Pincode must be exactly 6 digits."
             )
@@ -123,19 +112,8 @@ class BuildingSerializer(serializers.ModelSerializer):
     def validate_total_floors(self, value):
 
         if value < 0:
-
             raise serializers.ValidationError(
                 "Total floors cannot be negative."
-            )
-
-        return value
-
-    def validate_total_flats(self, value):
-
-        if value < 0:
-
-            raise serializers.ValidationError(
-                "Total flats cannot be negative."
             )
 
         return value
@@ -148,13 +126,11 @@ class BuildingSerializer(serializers.ModelSerializer):
         value = value.strip()
 
         if not value.isdigit():
-
             raise serializers.ValidationError(
                 "Mobile number must contain only digits."
             )
 
-        if len(value) < 10 or len(value) > 15:
-
+        if not (10 <= len(value) <= 15):
             raise serializers.ValidationError(
                 "Mobile number must be between 10 and 15 digits."
             )
@@ -166,35 +142,8 @@ class BuildingSerializer(serializers.ModelSerializer):
         value = value.strip()
 
         if len(value) < 10:
-
             raise serializers.ValidationError(
                 "Address is too short."
             )
 
         return value
-
-    # ==================================================
-    # OBJECT LEVEL VALIDATION
-    # ==================================================
-
-    def validate(self, attrs):
-
-        total_floors = attrs.get(
-            'total_floors',
-            self.instance.total_floors if self.instance else 0
-        )
-
-        total_flats = attrs.get(
-            'total_flats',
-            self.instance.total_flats if self.instance else 0
-        )
-
-        if total_flats > 0 and total_floors == 0:
-
-            raise serializers.ValidationError({
-                "total_floors": (
-                    "Total floors must be greater than 0."
-                )
-            })
-
-        return attrs

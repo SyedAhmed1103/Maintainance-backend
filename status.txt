@@ -1,0 +1,521 @@
+# SOCIETY MANAGEMENT APP - PROJECT STATUS REPORT
+
+## PROJECT ARCHITECTURE
+
+### Module 1: Society Setup
+
+Purpose:
+
+Society ka complete master data maintain karna.
+
+Hierarchy:
+
+Building
+↓
+Wing
+↓
+Flat
+↓
+Owner(User)
+
+---
+
+## BUILDING MODULE
+
+### Model
+
+Building
+
+Stores:
+
+* Building Name
+* Building Code
+* Address
+* City
+* State
+* Pincode
+* Total Floors
+* Total Flats
+* Society Email
+* Society Mobile
+* Building Type
+* Active Status
+
+### APIs
+
+* Create Building
+* List Buildings
+* Building Detail
+* Update Building
+* Delete Building
+
+### Responsibility
+
+Society ki root entity.
+
+Sab kuch Building se start hota hai.
+
+---
+
+## WING MODULE
+
+### Model
+
+Wing
+
+Stores:
+
+* Building
+* Wing Name
+* Active Status
+
+### APIs
+
+* Create Wing
+* List Wings
+* Wing Detail
+* Update Wing
+* Deactivate Wing
+
+### Responsibility
+
+Building ke andar A Wing, B Wing, C Wing etc.
+
+---
+
+## FLAT MODULE
+
+### Model
+
+Flat
+
+Stores:
+
+* Building
+* Wing
+* Flat Number
+* Floor Number
+* Flat Type
+* Area Sqft
+* Occupancy Status
+* Active Status
+
+Occupancy:
+
+* occupied
+* vacant
+* unsold
+
+### APIs
+
+* Create Flat
+* List Flats
+* Flat Detail
+* Update Flat
+* Deactivate Flat
+
+### Responsibility
+
+Maintenance calculation yahi se hoti hai.
+
+Per sqft maintenance ke liye area_sqft use hoga.
+
+---
+
+## USER MODULE
+
+### Model
+
+User
+
+Stores:
+
+* First Name
+* Last Name
+* Email
+* Mobile
+* User Type
+* Building
+* Flat
+* Verification Status
+
+Current User Types:
+
+* owner
+
+Future:
+
+* tenant
+* committee
+* admin
+
+### APIs
+
+* Create User
+* List Users
+* User Detail
+* Update User
+* Delete User
+
+### Responsibility
+
+Owner mapping.
+
+Maintenance flat se linked rahegi.
+Owner change ho sakta hai.
+
+Bills kabhi change nahi honge.
+
+========================================================
+MAINTENANCE MODULE
+==================
+
+Purpose:
+
+Complete accounting system.
+
+Supports:
+
+* Monthly Maintenance
+* Opening Due
+* Special Charges
+* Partial Payments
+* Advance Payments
+* Outstanding Tracking
+* Receipts
+
+---
+
+## MAINTENANCE CONFIG
+
+### Model
+
+MaintenanceConfig
+
+Stores:
+
+* Building
+* Calculation Type
+* Fixed Amount
+* Rate Per Sqft
+* Effective From
+* Active Status
+
+Calculation Types:
+
+* fixed
+* per_sqft
+
+### Responsibility
+
+Maintenance rule define karna.
+
+Example:
+
+₹10 per sqft
+
+or
+
+₹5000 fixed
+
+History maintain hoti hai.
+
+Rate change hone par naya config create hota hai.
+
+---
+
+## MAINTENANCE BILL
+
+### Model
+
+MaintenanceBill
+
+Stores:
+
+* Flat
+* Bill Type
+* Month
+* Year
+* Amount
+* Paid Amount
+* Pending Amount
+* Due Date
+* Status
+* Notes
+
+Bill Types:
+
+* opening
+* monthly
+* special
+
+Statuses:
+
+* unpaid
+* partial
+* paid
+
+### Responsibility
+
+Accounting ledger.
+
+Har maintenance charge yahi store hota hai.
+
+---
+
+## PAYMENT
+
+### Model
+
+Payment
+
+Stores:
+
+* Flat
+* Amount
+* Unallocated Amount
+* Receipt Number
+* Payment Mode
+* Transaction Id
+* Remarks
+* Paid At
+
+Payment Modes:
+
+* online
+* cash
+* cheque
+
+### Responsibility
+
+Payment transaction ledger.
+
+Advance amount bhi yahi track hoti hai.
+
+Example:
+
+Paid = ₹50000
+
+Outstanding = ₹10000
+
+Remaining ₹40000
+
+Stored in:
+
+unallocated_amount
+
+---
+
+## PAYMENT ADJUSTMENT
+
+### Model
+
+PaymentAdjustment
+
+Stores:
+
+* Payment
+* Bill
+* Adjusted Amount
+
+### Responsibility
+
+Audit Trail.
+
+Example:
+
+Payment = ₹10000
+
+Allocated:
+
+Bill 1 = ₹3000
+
+Bill 2 = ₹5000
+
+Bill 3 = ₹2000
+
+Sab mapping yahan store hogi.
+
+========================================================
+SERVICE LAYER
+=============
+
+Business Logic Layer
+
+---
+
+## BillGenerationService
+
+Responsibilities:
+
+* Monthly Bill Generation
+* Opening Due Creation
+* Special Charge Creation
+* Bulk Bill Generation
+* Duplicate Prevention
+* Config Selection by Effective Date
+
+Rules:
+
+occupied → bill
+
+vacant → bill
+
+unsold → no bill
+
+---
+
+## PaymentAllocationService
+
+Responsibilities:
+
+* Receive Payment
+* Allocate Oldest Dues First
+* Create Payment Adjustments
+* Update Bill Status
+* Store Advance Balance
+* Partial Payment Handling
+* Full Payment Handling
+
+Example:
+
+Outstanding = ₹10000
+
+Payment = ₹50000
+
+Allocation = ₹10000
+
+Advance = ₹40000
+
+---
+
+## ReceiptService
+
+Responsibilities:
+
+* Receipt Data Generation
+* Payment Summary
+* Bill Mapping
+* Adjustment Summary
+* PDF Ready Data
+
+========================================================
+API MODULES
+===========
+
+CONFIG APIs
+
+* Create Config
+* List Configs
+* Config Detail
+* Update Config
+* Deactivate Config
+
+---
+
+BILL APIs
+
+* Generate Monthly Bills
+* List Bills
+* Bill Detail
+* Flat Bill History
+
+---
+
+PAYMENT APIs
+
+* Receive Payment
+* Payment List
+* Payment Detail
+* Flat Payment History
+
+---
+
+RECEIPT APIs
+
+* Receipt Detail
+* Receipt Summary
+
+========================================================
+ACCOUNTING FLOW
+===============
+
+Admin Creates Config
+
+↓
+
+Generate Monthly Bills
+
+↓
+
+Bills Created
+
+↓
+
+Resident Pays
+
+↓
+
+Payment Created
+
+↓
+
+PaymentAdjustment Created
+
+↓
+
+Bills Updated
+
+↓
+
+Receipt Generated
+
+========================================================
+CURRENT PROJECT STATUS
+========================================================
+
+Building Module         ✅ Complete
+
+Wing Module             ✅ Complete
+
+Flat Module             ✅ Complete
+
+User Module             ✅ Complete
+
+Maintenance Models      ✅ Complete
+
+Maintenance Services    ✅ Complete
+
+Maintenance APIs        ✅ Complete
+
+Maintenance URLs        ✅ Complete
+
+Maintenance Module V1   ✅ Complete
+
+========================================================
+NEXT MODULES
+============
+
+Complaint Module
+
+Notice Module
+
+Income Module
+
+Expense Module
+
+Dashboard Module
+
+Reports Module
+
+Authentication Module
+
+OTP Login
+
+Push Notifications
+
+Payment Gateway Integration
+
+PDF Receipt Generation
+
+Mobile App APIs

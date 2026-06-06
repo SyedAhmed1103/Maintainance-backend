@@ -10,21 +10,39 @@ class FlatSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    wing_name = serializers.CharField(
+        source='wing.wing_name',
+        read_only=True
+    )
+
+    owner = serializers.SerializerMethodField()
+
     class Meta:
 
         model = Flat
 
         fields = [
             'id',
+
             'building',
             'building_name',
+
             'wing',
+            'wing_name',
+
             'flat_number',
             'floor_number',
+
             'flat_type',
+
+            'owner',
+
             'occupancy_status',
+
             'area_sqft',
+
             'is_active',
+
             'created_at',
             'updated_at',
         ]
@@ -32,31 +50,38 @@ class FlatSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'building_name',
+            'wing_name',
+            'owner',
             'created_at',
             'updated_at',
         ]
 
     # ==================================================
-    # FIELD VALIDATIONS
+    # OWNER DETAILS
     # ==================================================
 
-    def validate_wing(self, value):
+    def get_owner(self, obj):
 
-        value = value.strip().upper()
+        if not obj.owner:
 
-        if len(value) < 1:
+            return None
 
-            raise serializers.ValidationError(
-                "Wing is required."
-            )
+        return {
+            "id": obj.owner.id,
+            "full_name": obj.owner.full_name,
+            "email": obj.owner.email,
+            "mobile": obj.owner.mobile,
+        }
 
-        return value
+    # ==================================================
+    # FIELD VALIDATIONS
+    # ==================================================
 
     def validate_flat_number(self, value):
 
         value = value.strip().upper()
 
-        if len(value) < 1:
+        if not value:
 
             raise serializers.ValidationError(
                 "Flat number is required."
@@ -74,24 +99,12 @@ class FlatSerializer(serializers.ModelSerializer):
 
         return value
 
-    def validate_flat_type(self, value):
-
-        value = value.strip().title()
-
-        if len(value) < 1:
-
-            raise serializers.ValidationError(
-                "Flat type is required."
-            )
-
-        return value
-
     def validate_area_sqft(self, value):
 
-        if value < 0:
+        if value <= 0:
 
             raise serializers.ValidationError(
-                "Area cannot be negative."
+                "Area must be greater than zero."
             )
 
         return value
@@ -117,16 +130,29 @@ class FlatSerializer(serializers.ModelSerializer):
             self.instance.flat_number if self.instance else None
         )
 
+        # Wing belongs to Building
+
+        if wing and building:
+
+            if wing.building_id != building.id:
+
+                raise serializers.ValidationError({
+                    "wing":
+                    "Selected wing does not belong to selected building."
+                })
+
+        # Unique Flat Per Wing
+
         queryset = Flat.objects.filter(
             building=building,
-            wing__iexact=wing,
+            wing=wing,
             flat_number__iexact=flat_number
         )
 
         if self.instance:
 
             queryset = queryset.exclude(
-                id=self.instance.id
+                pk=self.instance.pk
             )
 
         if queryset.exists():

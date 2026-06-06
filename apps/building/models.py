@@ -31,23 +31,19 @@ class Building(models.Model):
         max_length=10
     )
 
-    total_floors = models.IntegerField(
+    total_floors = models.PositiveIntegerField(
         default=0
     )
 
     society_email = models.EmailField(
-            blank=True,
-            null=True
-        )
+        blank=True,
+        null=True
+    )
 
     society_mobile = models.CharField(
-          max_length=15,
-            blank=True,
-            null=True
-            )
-
-    total_flats = models.IntegerField(
-        default=0
+        max_length=15,
+        blank=True,
+        null=True
     )
 
     building_type = models.CharField(
@@ -76,6 +72,14 @@ class Building(models.Model):
         auto_now=True
     )
 
+    class Meta:
+        db_table = 'buildings'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['building_code']),
+            models.Index(fields=['city']),
+            models.Index(fields=['is_active']),
+        ]
+
     def __str__(self):
-        return self.building_name
-    
+        return f"{self.building_name} ({self.building_code})"

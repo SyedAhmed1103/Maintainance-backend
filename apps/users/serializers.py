@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from .models import User
 
-
 class UserSerializer(serializers.ModelSerializer):
 
     building_name = serializers.CharField(
@@ -10,9 +9,21 @@ class UserSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-    flat_number = serializers.SerializerMethodField()
-
     full_name = serializers.SerializerMethodField()
+
+    owned_flats = serializers.SerializerMethodField()
+
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        style={'input_type': 'password'}
+    )
+
+    flat_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
 
     class Meta:
 
@@ -20,18 +31,26 @@ class UserSerializer(serializers.ModelSerializer):
 
         fields = [
             'id',
+
             'first_name',
             'last_name',
             'full_name',
+
             'email',
+            'password',
             'mobile',
+
             'user_type',
+
             'building',
             'building_name',
-            'flat',
-            'flat_number',
+
+            'flat_ids',
+            'owned_flats',
+
             'is_verified',
             'is_active',
+
             'created_at',
             'updated_at',
         ]
@@ -39,8 +58,8 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'building_name',
-            'flat_number',
             'full_name',
+            'owned_flats',
             'created_at',
             'updated_at',
         ]
@@ -51,18 +70,27 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_full_name(self, obj):
 
-        return f"{obj.first_name} {obj.last_name or ''}".strip()
+        return (
+            f"{obj.first_name} "
+            f"{obj.last_name or ''}"
+        ).strip()
 
-    def get_flat_number(self, obj):
+    def get_owned_flats(self, obj):
 
-        if obj.flat:
-
-            return f"{obj.flat.wing}-{obj.flat.flat_number}"
-
-        return None
+        return [
+            {
+                "id": flat.id,
+                "flat_number": flat.flat_number,
+                "wing": flat.wing.wing_name,
+                "flat_type": flat.flat_type,
+            }
+            for flat in obj.flats.select_related(
+                'wing'
+            )
+        ]
 
     # ==================================================
-    # FIELD VALIDATIONS
+    # VALIDATIONS
     # ==================================================
 
     def validate_first_name(self, value):
@@ -80,6 +108,7 @@ class UserSerializer(serializers.ModelSerializer):
     def validate_last_name(self, value):
 
         if not value:
+
             return value
 
         return value.strip().title()
@@ -95,7 +124,7 @@ class UserSerializer(serializers.ModelSerializer):
         if self.instance:
 
             queryset = queryset.exclude(
-                id=self.instance.id
+                pk=self.instance.pk
             )
 
         if queryset.exists():
@@ -116,7 +145,7 @@ class UserSerializer(serializers.ModelSerializer):
                 "Mobile number must contain only digits."
             )
 
-        if len(value) < 10 or len(value) > 15:
+        if not (10 <= len(value) <= 15):
 
             raise serializers.ValidationError(
                 "Mobile number must be between 10 and 15 digits."
@@ -129,7 +158,7 @@ class UserSerializer(serializers.ModelSerializer):
         if self.instance:
 
             queryset = queryset.exclude(
-                id=self.instance.id
+                pk=self.instance.pk
             )
 
         if queryset.exists():
@@ -140,50 +169,47 @@ class UserSerializer(serializers.ModelSerializer):
 
         return value
 
-    # ==================================================
-    # OBJECT LEVEL VALIDATION
-    # ==================================================
+    def create(self, validated_data):
 
-    def validate(self, attrs):
-
-        user_type = attrs.get(
-            'user_type',
-            self.instance.user_type if self.instance else None
+        validated_data.pop(
+            'flat_ids',
+            None
         )
 
-        building = attrs.get(
-            'building',
-            self.instance.building if self.instance else None
+        validated_data.pop(
+            'password',
+            None
         )
 
-        flat = attrs.get(
-            'flat',
-            self.instance.flat if self.instance else None
+        return User.objects.create(
+            **validated_data
         )
 
-        if user_type in ['owner', 'tenant']:
 
-            if not building:
+    def update(
+        self,
+        instance,
+        validated_data
+    ):
 
-                raise serializers.ValidationError({
-                    "building":
-                    "Building is required."
-                })
+        validated_data.pop(
+            'flat_ids',
+            None
+        )
 
-            if not flat:
+        validated_data.pop(
+            'password',
+            None
+        )
 
-                raise serializers.ValidationError({
-                    "flat":
-                    "Flat is required."
-                })
+        for attr, value in validated_data.items():
 
-        if flat and building:
+            setattr(
+                instance,
+                attr,
+                value
+            )
 
-            if flat.building_id != building.id:
+        instance.save()
 
-                raise serializers.ValidationError({
-                    "flat":
-                    "Selected flat does not belong to the selected building."
-                })
-
-        return attrs
+        return instance

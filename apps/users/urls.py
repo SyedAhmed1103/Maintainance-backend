@@ -10,52 +10,37 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE USER
-    # ==================================================
-
-    path(
-        'create/',
-        UserCreateAPIView.as_view(),
-        name='user-create'
-    ),
-
-    # ==================================================
-    # USER LIST
-    # ==================================================
-
+    # List Users
     path(
         '',
         UserListAPIView.as_view(),
         name='user-list'
     ),
 
-    # ==================================================
-    # USER DETAILS
-    # ==================================================
+    # Create User
+    path(
+        'create/',
+        UserCreateAPIView.as_view(),
+        name='user-create'
+    ),
 
+    # User Detail
     path(
         '<int:pk>/',
         UserDetailAPIView.as_view(),
         name='user-detail'
     ),
 
-    # ==================================================
-    # UPDATE USER
-    # ==================================================
-
+    # Update User
     path(
-        'update/<int:pk>/',
+        '<int:pk>/update/',
         UserUpdateAPIView.as_view(),
         name='user-update'
     ),
 
-    # ==================================================
-    # DELETE USER
-    # ==================================================
-
+    # Deactivate User
     path(
-        'delete/<int:pk>/',
+        '<int:pk>/delete/',
         UserDeleteAPIView.as_view(),
         name='user-delete'
     ),

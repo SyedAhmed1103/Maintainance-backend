@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q
 
 from rest_framework import generics
@@ -7,14 +8,18 @@ from rest_framework import status
 from .models import User
 from .serializers import UserSerializer
 
+from apps.flats.models import Flat
 
 # =========================================================
+
 # CREATE USER
+
 # =========================================================
 
 class UserCreateAPIView(generics.CreateAPIView):
 
     queryset = User.objects.all()
+
     serializer_class = UserSerializer
 
     def create(self, request, *args, **kwargs):
@@ -23,7 +28,67 @@ class UserCreateAPIView(generics.CreateAPIView):
             data=request.data
         )
 
-        if serializer.is_valid():
+        if not serializer.is_valid():
+
+            return Response(
+                {
+                    "success": False,
+                    "message": "Validation error.",
+                    "errors": serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        flat_ids = request.data.get(
+            'flat_ids',
+            []
+        )
+
+        flats = Flat.objects.filter(
+            id__in=flat_ids,
+            is_active=True
+        )
+
+        if len(flat_ids) != flats.count():
+
+            return Response(
+                {
+                    "success": False,
+                    "message":
+                    "One or more flats are invalid."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        building = serializer.validated_data.get(
+            'building'
+        )
+
+        for flat in flats:
+
+            if flat.building_id != building.id:
+
+                return Response(
+                    {
+                        "success": False,
+                        "message":
+                        f"Flat {flat.flat_number} does not belong to selected building."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            if flat.owner:
+
+                return Response(
+                    {
+                        "success": False,
+                        "message":
+                        f"Flat {flat.flat_number} already has an owner."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        with transaction.atomic():
 
             user = serializer.save()
 
@@ -33,30 +98,37 @@ class UserCreateAPIView(generics.CreateAPIView):
 
             if password:
 
-                user.set_password(password)
+                user.set_password(
+                    password
+                )
+
                 user.save()
 
-            return Response(
-                {
-                    "success": True,
-                    "message": "User created successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
+            for flat in flats:
+
+                flat.owner = user
+
+                flat.occupancy_status = (
+                    'occupied'
+                )
+
+                flat.save()
 
         return Response(
             {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
+                "success": True,
+                "message":
+                "User created successfully.",
+                "data":
+                UserSerializer(user).data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_201_CREATED
         )
 
-
 # =========================================================
+
 # USER LIST
+
 # =========================================================
 
 class UserListAPIView(generics.ListAPIView):
@@ -85,10 +157,28 @@ class UserListAPIView(generics.ListAPIView):
             ''
         )
 
-        queryset = User.objects.select_related(
-            'building',
-            'flat'
-        ).order_by('-id')
+        is_active = self.request.GET.get(
+            'is_active',
+            ''
+        )
+
+        queryset = (
+            User.objects
+            .select_related(
+                'building'
+            )
+            .prefetch_related(
+                'flats',
+                'flats__wing'
+            )
+            .order_by('-id')
+        )
+
+        if is_active == '':
+
+            queryset = queryset.filter(
+                is_active=True
+            )
 
         if search:
 
@@ -125,6 +215,20 @@ class UserListAPIView(generics.ListAPIView):
                     is_verified=False
                 )
 
+        if is_active != '':
+
+            if is_active.lower() == 'true':
+
+                queryset = queryset.filter(
+                    is_active=True
+                )
+
+            elif is_active.lower() == 'false':
+
+                queryset = queryset.filter(
+                    is_active=False
+                )
+
         return queryset
 
     def list(self, request, *args, **kwargs):
@@ -139,26 +243,37 @@ class UserListAPIView(generics.ListAPIView):
         return Response(
             {
                 "success": True,
-                "message": "User list fetched successfully.",
-                "count": queryset.count(),
-                "data": serializer.data
+                "message":
+                "User list fetched successfully.",
+                "count":
+                queryset.count(),
+                "data":
+                serializer.data
             },
             status=status.HTTP_200_OK
         )
 
-
 # =========================================================
+
 # USER DETAILS
+
 # =========================================================
 
 class UserDetailAPIView(generics.RetrieveAPIView):
 
-    queryset = User.objects.select_related(
-        'building',
-        'flat'
+    queryset = (
+        User.objects
+        .select_related(
+            'building'
+        )
+        .prefetch_related(
+            'flats',
+            'flats__wing'
+        )
     )
 
     serializer_class = UserSerializer
+
     lookup_field = 'pk'
 
     def retrieve(self, request, *args, **kwargs):
@@ -172,21 +287,26 @@ class UserDetailAPIView(generics.RetrieveAPIView):
         return Response(
             {
                 "success": True,
-                "message": "User details fetched successfully.",
-                "data": serializer.data
+                "message":
+                "User details fetched successfully.",
+                "data":
+                serializer.data
             },
             status=status.HTTP_200_OK
         )
 
-
 # =========================================================
+
 # UPDATE USER
+
 # =========================================================
 
 class UserUpdateAPIView(generics.UpdateAPIView):
 
     queryset = User.objects.all()
+
     serializer_class = UserSerializer
+
     lookup_field = 'pk'
 
     def update(self, request, *args, **kwargs):
@@ -204,7 +324,75 @@ class UserUpdateAPIView(generics.UpdateAPIView):
             partial=partial
         )
 
-        if serializer.is_valid():
+        if not serializer.is_valid():
+
+            return Response(
+                {
+                    "success": False,
+                    "message":
+                    "Validation error.",
+                    "errors":
+                    serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        flat_ids = request.data.get(
+            'flat_ids',
+            []
+        )
+
+        flats = Flat.objects.filter(
+            id__in=flat_ids,
+            is_active=True
+        )
+
+        if flat_ids:
+
+            if len(flat_ids) != flats.count():
+
+                return Response(
+                    {
+                        "success": False,
+                        "message":
+                        "One or more flats are invalid."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            building = serializer.validated_data.get(
+                'building',
+                instance.building
+            )
+
+            for flat in flats:
+
+                if flat.building_id != building.id:
+
+                    return Response(
+                        {
+                            "success": False,
+                            "message":
+                            f"Flat {flat.flat_number} does not belong to selected building."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                if (
+                    flat.owner
+                    and flat.owner != instance
+                ):
+
+                    return Response(
+                        {
+                            "success": False,
+                            "message":
+                            f"Flat {flat.flat_number} already has an owner."
+                        },
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+        with transaction.atomic():
 
             user = serializer.save()
 
@@ -214,28 +402,49 @@ class UserUpdateAPIView(generics.UpdateAPIView):
 
             if password:
 
-                user.set_password(password)
+                user.set_password(
+                    password
+                )
+
                 user.save()
 
-            return Response(
-                {
-                    "success": True,
-                    "message": "User updated successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_200_OK
-            )
+            if flat_ids:
+
+                Flat.objects.filter(
+                    owner=user
+                ).exclude(
+                    id__in=flat_ids
+                ).update(
+                    owner=None
+                )
+
+                for flat in flats:
+
+                    flat.owner = user
+
+                    flat.occupancy_status = (
+                        'occupied'
+                    )
+
+                    flat.save()
 
         return Response(
             {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
+                "success": True,
+                "message":
+                "User updated successfully.",
+                "data":
+                UserSerializer(user).data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_200_OK
         )
 
-    def patch(self, request, *args, **kwargs):
+    def patch(
+        self,
+        request,
+        *args,
+        **kwargs
+    ):
 
         kwargs['partial'] = True
 
@@ -245,27 +454,41 @@ class UserUpdateAPIView(generics.UpdateAPIView):
             **kwargs
         )
 
-
 # =========================================================
-# DELETE USER
+
+# DEACTIVATE USER
+
 # =========================================================
 
 class UserDeleteAPIView(generics.DestroyAPIView):
 
     queryset = User.objects.all()
+
     serializer_class = UserSerializer
+
     lookup_field = 'pk'
 
     def destroy(self, request, *args, **kwargs):
 
         instance = self.get_object()
 
-        instance.delete()
+        with transaction.atomic():
+
+            Flat.objects.filter(
+                owner=instance
+            ).update(
+                owner=None
+            )
+
+            instance.is_active = False
+
+            instance.save()
 
         return Response(
             {
                 "success": True,
-                "message": "User deleted successfully."
+                "message":
+                "User deactivated successfully."
             },
             status=status.HTTP_200_OK
         )

@@ -15,6 +15,7 @@ from .serializers import FlatSerializer
 class FlatCreateAPIView(generics.CreateAPIView):
 
     queryset = Flat.objects.all()
+
     serializer_class = FlatSerializer
 
     def create(self, request, *args, **kwargs):
@@ -66,6 +67,11 @@ class FlatListAPIView(generics.ListAPIView):
             ''
         )
 
+        wing_id = self.request.GET.get(
+            'wing_id',
+            ''
+        )
+
         occupancy_status = self.request.GET.get(
             'occupancy_status',
             ''
@@ -77,11 +83,24 @@ class FlatListAPIView(generics.ListAPIView):
         )
 
         queryset = Flat.objects.select_related(
-            'building'
-        ).order_by(
+            'building',
             'wing',
+            'owner'
+        ).order_by(
+            'wing__wing_name',
+            'floor_number',
             'flat_number'
         )
+
+        # =============================================
+        # DEFAULT ACTIVE RECORDS
+        # =============================================
+
+        if is_active == '':
+
+            queryset = queryset.filter(
+                is_active=True
+            )
 
         # =============================================
         # SEARCH
@@ -91,8 +110,9 @@ class FlatListAPIView(generics.ListAPIView):
 
             queryset = queryset.filter(
                 Q(flat_number__icontains=search) |
-                Q(wing__icontains=search) |
                 Q(flat_type__icontains=search) |
+                Q(occupancy_status__icontains=search) |
+                Q(wing__wing_name__icontains=search) |
                 Q(building__building_name__icontains=search)
             )
 
@@ -104,6 +124,16 @@ class FlatListAPIView(generics.ListAPIView):
 
             queryset = queryset.filter(
                 building_id=building_id
+            )
+
+        # =============================================
+        # WING FILTER
+        # =============================================
+
+        if wing_id:
+
+            queryset = queryset.filter(
+                wing_id=wing_id
             )
 
         # =============================================
@@ -163,10 +193,13 @@ class FlatListAPIView(generics.ListAPIView):
 class FlatDetailAPIView(generics.RetrieveAPIView):
 
     queryset = Flat.objects.select_related(
-        'building'
+        'building',
+        'wing',
+        'owner'
     )
 
     serializer_class = FlatSerializer
+
     lookup_field = 'pk'
 
     def retrieve(self, request, *args, **kwargs):
@@ -186,15 +219,19 @@ class FlatDetailAPIView(generics.RetrieveAPIView):
             status=status.HTTP_200_OK
         )
 
-
 # =========================================================
 # UPDATE FLAT
 # =========================================================
 
 class FlatUpdateAPIView(generics.UpdateAPIView):
 
-    queryset = Flat.objects.all()
+    queryset = Flat.objects.select_related(
+        'building',
+        'wing'
+    )
+
     serializer_class = FlatSerializer
+
     lookup_field = 'pk'
 
     def update(self, request, *args, **kwargs):
@@ -246,25 +283,37 @@ class FlatUpdateAPIView(generics.UpdateAPIView):
 
 
 # =========================================================
-# DELETE FLAT
+# DEACTIVATE FLAT
 # =========================================================
 
 class FlatDeleteAPIView(generics.DestroyAPIView):
 
-    queryset = Flat.objects.all()
+    queryset = Flat.objects.select_related(
+        'building',
+        'wing'
+    )
+
     serializer_class = FlatSerializer
+
     lookup_field = 'pk'
 
     def destroy(self, request, *args, **kwargs):
 
         instance = self.get_object()
 
-        instance.delete()
+        instance.is_active = False
+
+        instance.save(
+            update_fields=[
+                'is_active',
+                'updated_at'
+            ]
+        )
 
         return Response(
             {
                 "success": True,
-                "message": "Flat deleted successfully."
+                "message": "Flat deactivated successfully."
             },
             status=status.HTTP_200_OK
         )

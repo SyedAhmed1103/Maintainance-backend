@@ -10,9 +10,12 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE BUILDING
-    # ==================================================
+    # Create Building
+    path(
+        '',
+        BuildingListAPIView.as_view(),
+        name='building-list'
+    ),
 
     path(
         'create/',
@@ -20,42 +23,23 @@ urlpatterns = [
         name='building-create'
     ),
 
-    # ==================================================
-    # BUILDING LIST
-    # ==================================================
-
-    path(
-        '',
-        BuildingListAPIView.as_view(),
-        name='building-list'
-    ),
-
-    # ==================================================
-    # BUILDING DETAILS
-    # ==================================================
-
+    # Building Detail
     path(
         '<int:pk>/',
         BuildingDetailAPIView.as_view(),
         name='building-detail'
     ),
 
-    # ==================================================
-    # UPDATE BUILDING
-    # ==================================================
-
+    # Update Building
     path(
-        'update/<int:pk>/',
+        '<int:pk>/update/',
         BuildingUpdateAPIView.as_view(),
         name='building-update'
     ),
 
-    # ==================================================
-    # DELETE BUILDING
-    # ==================================================
-
+    # Deactivate Building
     path(
-        'delete/<int:pk>/',
+        '<int:pk>/delete/',
         BuildingDeleteAPIView.as_view(),
         name='building-delete'
     ),

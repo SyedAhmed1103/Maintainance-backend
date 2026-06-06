@@ -36,22 +36,26 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
     'rest_framework',
-
-    'apps.admins',
+    'drf_spectacular',
+    'drf_spectacular_sidecar',
     'apps.building',
+    'apps.wing',
+    'apps.flats',
+    'apps.users',
+    'apps.maintenance',
+    'apps.admins',
     'apps.complaint',
     'apps.expense',
-    'apps.flats',
     'apps.income',
-    'apps.maintainancedetails',
-    'apps.maintenance',
     'apps.notice',
-    'apps.payment',
-    'apps.users',
-    'apps.wing',
 ]
+
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS':
+        'drf_spectacular.openapi.AutoSchema',
+}
 
 
 MIDDLEWARE = [
@@ -87,13 +91,27 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'postgres',
+#         'USER': 'postgres',
+#         'PASSWORD': 'Django@2026#Supabase',
+#         'HOST': 'db.tgsafgcdtuehrgrkwqaj.supabase.co',
+#         'PORT': '5432',
+#         'OPTIONS': {
+#             'sslmode': 'require',
+#         },
+#     }
+# }
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'postgres',
-        'USER': 'postgres',
+        'USER': 'postgres.tgsafgcdtuehrgrkwqaj',
         'PASSWORD': 'Django@2026#Supabase',
-        'HOST': 'db.tgsafgcdtuehrgrkwqaj.supabase.co',
+        'HOST': 'aws-1-ap-southeast-2.pooler.supabase.com',
         'PORT': '5432',
         'OPTIONS': {
             'sslmode': 'require',

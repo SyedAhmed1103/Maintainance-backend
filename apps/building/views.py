@@ -74,6 +74,11 @@ class BuildingListAPIView(generics.ListAPIView):
             'created_by'
         ).order_by('-id')
 
+        if is_active == '':
+            queryset = queryset.filter(
+                is_active=True
+            )
+
         if search:
 
             queryset = queryset.filter(
@@ -216,7 +221,7 @@ class BuildingUpdateAPIView(generics.UpdateAPIView):
 
 
 # =========================================================
-# DELETE BUILDING
+# DEACTIVATE BUILDING
 # =========================================================
 
 class BuildingDeleteAPIView(generics.DestroyAPIView):
@@ -229,12 +234,13 @@ class BuildingDeleteAPIView(generics.DestroyAPIView):
 
         instance = self.get_object()
 
-        instance.delete()
+        instance.is_active = False
+        instance.save()
 
         return Response(
             {
                 "success": True,
-                "message": "Building deleted successfully."
+                "message": "Building deactivated successfully."
             },
             status=status.HTTP_200_OK
         )

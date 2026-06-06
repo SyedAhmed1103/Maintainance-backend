@@ -10,52 +10,37 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE FLAT
-    # ==================================================
-
-    path(
-        'create/',
-        FlatCreateAPIView.as_view(),
-        name='flat-create'
-    ),
-
-    # ==================================================
-    # FLAT LIST
-    # ==================================================
-
+    # List Flats
     path(
         '',
         FlatListAPIView.as_view(),
         name='flat-list'
     ),
 
-    # ==================================================
-    # FLAT DETAILS
-    # ==================================================
+    # Create Flat
+    path(
+        'create/',
+        FlatCreateAPIView.as_view(),
+        name='flat-create'
+    ),
 
+    # Flat Detail
     path(
         '<int:pk>/',
         FlatDetailAPIView.as_view(),
         name='flat-detail'
     ),
 
-    # ==================================================
-    # UPDATE FLAT
-    # ==================================================
-
+    # Update Flat
     path(
-        'update/<int:pk>/',
+        '<int:pk>/update/',
         FlatUpdateAPIView.as_view(),
         name='flat-update'
     ),
 
-    # ==================================================
-    # DELETE FLAT
-    # ==================================================
-
+    # Deactivate Flat
     path(
-        'delete/<int:pk>/',
+        '<int:pk>/delete/',
         FlatDeleteAPIView.as_view(),
         name='flat-delete'
     ),

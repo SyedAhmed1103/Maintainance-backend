@@ -5,39 +5,43 @@ from .views import (
     WingListAPIView,
     WingDetailAPIView,
     WingUpdateAPIView,
-    WingDeleteAPIView
+    WingDeleteAPIView,
 )
 
 urlpatterns = [
-    
+
+    # List Wings
+    path(
+        '',
+        WingListAPIView.as_view(),
+        name='wing-list'
+    ),
+
+    # Create Wing
     path(
         'create/',
         WingCreateAPIView.as_view(),
         name='wing-create'
     ),
 
+    # Wing Detail
     path(
-        'list/',
-        WingListAPIView.as_view(),
-        name='wing-list'
-    ),
-
-    path(
-        'detail/<int:pk>/',
+        '<int:pk>/',
         WingDetailAPIView.as_view(),
         name='wing-detail'
     ),
 
+    # Update Wing
     path(
-        'update/<int:pk>/',
+        '<int:pk>/update/',
         WingUpdateAPIView.as_view(),
         name='wing-update'
     ),
 
+    # Deactivate Wing
     path(
-        'delete/<int:pk>/',
+        '<int:pk>/delete/',
         WingDeleteAPIView.as_view(),
         name='wing-delete'
     ),
-
 ]

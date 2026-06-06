@@ -1,136 +1,222 @@
-from rest_framework import status
-from rest_framework.generics import GenericAPIView
+from django.db.models import Q
+
+from rest_framework import generics
 from rest_framework.response import Response
+from rest_framework import status
 
 from .models import Wing
 from .serializers import WingSerializer
 
 
-class WingCreateAPIView(GenericAPIView):
+# =========================================================
+# CREATE WING
+# =========================================================
+
+class WingCreateAPIView(generics.CreateAPIView):
+
+    queryset = Wing.objects.all()
     serializer_class = WingSerializer
 
-    def post(self, request):
-        serializer = self.serializer_class(data=request.data)
+    def create(self, request, *args, **kwargs):
+
+        serializer = self.get_serializer(
+            data=request.data
+        )
 
         if serializer.is_valid():
+
             serializer.save()
 
             return Response(
                 {
-                    "message": "Wing created successfully",
+                    "success": True,
+                    "message": "Wing created successfully.",
                     "data": serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
 
         return Response(
-            serializer.errors,
+            {
+                "success": False,
+                "message": "Validation error.",
+                "errors": serializer.errors
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
 
-class WingListAPIView(GenericAPIView):
+# =========================================================
+# WING LIST
+# =========================================================
+
+class WingListAPIView(generics.ListAPIView):
+
     serializer_class = WingSerializer
 
-    def get(self, request):
-        wings = Wing.objects.all().order_by('-id')
+    def get_queryset(self):
 
-        serializer = self.serializer_class(
-            wings,
+        search = self.request.GET.get(
+            'search',
+            ''
+        )
+
+        building_id = self.request.GET.get(
+            'building_id',
+            ''
+        )
+
+        queryset = Wing.objects.select_related(
+            'building'
+        ).filter(
+            is_active=True
+        ).order_by('-id')
+
+        if search:
+
+            queryset = queryset.filter(
+                Q(wing_name__icontains=search) |
+                Q(building__building_name__icontains=search)
+            )
+
+        if building_id:
+
+            queryset = queryset.filter(
+                building_id=building_id
+            )
+
+        return queryset
+
+    def list(self, request, *args, **kwargs):
+
+        queryset = self.get_queryset()
+
+        serializer = self.get_serializer(
+            queryset,
             many=True
         )
 
         return Response(
             {
-                "message": "Wing list fetched successfully",
+                "success": True,
+                "message": "Wing list fetched successfully.",
+                "count": queryset.count(),
                 "data": serializer.data
             },
             status=status.HTTP_200_OK
         )
 
 
-class WingDetailAPIView(GenericAPIView):
+# =========================================================
+# WING DETAILS
+# =========================================================
+
+class WingDetailAPIView(generics.RetrieveAPIView):
+
+    queryset = Wing.objects.select_related(
+        'building'
+    )
+
     serializer_class = WingSerializer
+    lookup_field = 'pk'
 
-    def get(self, request, pk):
-        try:
-            wing = Wing.objects.get(id=pk)
+    def retrieve(self, request, *args, **kwargs):
 
-        except Wing.DoesNotExist:
-            return Response(
-                {
-                    "message": "Wing not found"
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+        instance = self.get_object()
 
-        serializer = self.serializer_class(wing)
+        serializer = self.get_serializer(
+            instance
+        )
 
         return Response(
             {
-                "message": "Wing details fetched successfully",
+                "success": True,
+                "message": "Wing details fetched successfully.",
                 "data": serializer.data
             },
             status=status.HTTP_200_OK
         )
 
 
-class WingUpdateAPIView(GenericAPIView):
+# =========================================================
+# UPDATE WING
+# =========================================================
+
+class WingUpdateAPIView(generics.UpdateAPIView):
+
+    queryset = Wing.objects.all()
     serializer_class = WingSerializer
+    lookup_field = 'pk'
 
-    def put(self, request, pk):
-        try:
-            wing = Wing.objects.get(id=pk)
+    def update(self, request, *args, **kwargs):
 
-        except Wing.DoesNotExist:
-            return Response(
-                {
-                    "message": "Wing not found"
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
+        partial = kwargs.pop(
+            'partial',
+            False
+        )
 
-        serializer = self.serializer_class(
-            wing,
-            data=request.data
+        instance = self.get_object()
+
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial
         )
 
         if serializer.is_valid():
+
             serializer.save()
 
             return Response(
                 {
-                    "message": "Wing updated successfully",
+                    "success": True,
+                    "message": "Wing updated successfully.",
                     "data": serializer.data
                 },
                 status=status.HTTP_200_OK
             )
 
         return Response(
-            serializer.errors,
+            {
+                "success": False,
+                "message": "Validation error.",
+                "errors": serializer.errors
+            },
             status=status.HTTP_400_BAD_REQUEST
         )
 
+    def patch(self, request, *args, **kwargs):
 
-class WingDeleteAPIView(GenericAPIView):
+        kwargs['partial'] = True
 
-    def delete(self, request, pk):
-        try:
-            wing = Wing.objects.get(id=pk)
+        return self.update(
+            request,
+            *args,
+            **kwargs
+        )
 
-        except Wing.DoesNotExist:
-            return Response(
-                {
-                    "message": "Wing not found"
-                },
-                status=status.HTTP_404_NOT_FOUND
-            )
 
-        wing.delete()
+# =========================================================
+# DEACTIVATE WING
+# =========================================================
+
+class WingDeleteAPIView(generics.DestroyAPIView):
+
+    queryset = Wing.objects.all()
+    serializer_class = WingSerializer
+    lookup_field = 'pk'
+
+    def destroy(self, request, *args, **kwargs):
+
+        instance = self.get_object()
+
+        instance.is_active = False
+        instance.save()
 
         return Response(
             {
-                "message": "Wing deleted successfully"
+                "success": True,
+                "message": "Wing deactivated successfully."
             },
             status=status.HTTP_200_OK
         )
