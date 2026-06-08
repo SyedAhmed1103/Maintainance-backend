@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.expense',
     'apps.income',
     'apps.notice',
+    'corsheaders'
 ]
 
 
@@ -59,6 +60,8 @@ REST_FRAMEWORK = {
 
 
 MIDDLEWARE = [
+     'corsheaders.middleware.CorsMiddleware',
+    'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -171,3 +174,7 @@ EMAIL_HOST_USER = 'inquiry@itdax.in'
 EMAIL_HOST_PASSWORD = '5x!rddk8S~'
 
 DEFAULT_FROM_EMAIL = 'inquiry@itdax.in'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:4200",
+]
