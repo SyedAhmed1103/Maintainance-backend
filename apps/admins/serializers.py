@@ -134,3 +134,16 @@ class AdminSerializer(serializers.ModelSerializer):
             )
 
         return attrs
+    
+class AdminLoginSerializer(serializers.Serializer):
+
+    building = serializers.IntegerField()
+
+    mobile = serializers.CharField(
+        max_length=15
+    )
+
+    password = serializers.CharField(
+        max_length=255,
+        write_only=True
+    )

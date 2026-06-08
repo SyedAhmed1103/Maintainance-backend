@@ -6,6 +6,7 @@ from .views import (
     AdminDetailAPIView,
     AdminUpdateAPIView,
     AdminDeleteAPIView,
+    AdminLoginAPIView,
 )
 
 urlpatterns = [
@@ -59,4 +60,10 @@ urlpatterns = [
         AdminDeleteAPIView.as_view(),
         name='admin-delete'
     ),
+
+    path(
+    'login/',
+    AdminLoginAPIView.as_view(),
+    name='admin-login'
+),
 ]

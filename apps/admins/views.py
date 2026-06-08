@@ -1,11 +1,11 @@
 from django.db.models import Q
-
+from rest_framework.views import APIView
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Admin
-from .serializers import AdminSerializer
+from .serializers import AdminSerializer,AdminLoginSerializer
 
 
 # =========================================================
@@ -235,6 +235,70 @@ class AdminDeleteAPIView(generics.DestroyAPIView):
             {
                 "success": True,
                 "message": "Admin deleted successfully."
+            },
+            status=status.HTTP_200_OK
+        )
+    
+
+    # =========================================================
+# ADMIN LOGIN
+# =========================================================
+
+class AdminLoginAPIView(APIView):
+
+    def post(self, request):
+
+        serializer = AdminLoginSerializer(
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+
+            return Response(
+                {
+                    "success": False,
+                    "errors": serializer.errors
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        building = serializer.validated_data['building']
+        mobile = serializer.validated_data['mobile']
+        password = serializer.validated_data['password']
+
+        try:
+
+            admin = Admin.objects.select_related(
+                'building'
+            ).get(
+                building_id=building,
+                mobile=mobile,
+                password=password,
+                is_active=True
+            )
+
+        except Admin.DoesNotExist:
+
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid mobile number or password."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Login successful.",
+                "data": {
+                    "id": admin.id,
+                    "building": admin.building.id,
+                    "building_name": admin.building.building_name,
+                    "name": admin.name,
+                    "mobile": admin.mobile,
+                    "email": admin.email
+                }
             },
             status=status.HTTP_200_OK
         )
