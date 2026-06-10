@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     NoticeCreateAPIView,
     NoticeListAPIView,
+    BuildingNoticeListAPIView,
     NoticeDetailAPIView,
     NoticeUpdateAPIView,
     NoticeDeleteAPIView,
@@ -10,53 +11,40 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE NOTICE
-    # ==================================================
-
     path(
-        'create/',
+        "create/",
         NoticeCreateAPIView.as_view(),
-        name='notice-create'
+        name="notice-create"
     ),
 
-    # ==================================================
-    # NOTICE LIST
-    # ==================================================
-
     path(
-        '',
+        "",
         NoticeListAPIView.as_view(),
-        name='notice-list'
+        name="notice-list"
     ),
 
-    # ==================================================
-    # NOTICE DETAILS
-    # ==================================================
+    path(
+        "building/<int:building_id>/",
+        BuildingNoticeListAPIView.as_view(),
+        name="building-notice-list"
+    ),
 
     path(
-        '<int:pk>/',
+        "<int:pk>/",
         NoticeDetailAPIView.as_view(),
-        name='notice-detail'
+        name="notice-detail"
     ),
 
-    # ==================================================
-    # UPDATE NOTICE
-    # ==================================================
-
     path(
-        'update/<int:pk>/',
+        "<int:pk>/update/",
         NoticeUpdateAPIView.as_view(),
-        name='notice-update'
+        name="notice-update"
     ),
-
-    # ==================================================
-    # DELETE NOTICE
-    # ==================================================
 
     path(
-        'delete/<int:pk>/',
+        "<int:pk>/delete/",
         NoticeDeleteAPIView.as_view(),
-        name='notice-delete'
+        name="notice-delete"
     ),
+
 ]

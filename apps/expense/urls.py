@@ -1,8 +1,8 @@
 from django.urls import path
 
 from .views import (
-    ExpenseCreateAPIView,
     ExpenseListAPIView,
+    ExpenseCreateAPIView,
     ExpenseDetailAPIView,
     ExpenseUpdateAPIView,
     ExpenseDeleteAPIView,
@@ -10,53 +10,33 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE EXPENSE
-    # ==================================================
-
     path(
-        'create/',
-        ExpenseCreateAPIView.as_view(),
-        name='expense-create'
-    ),
-
-    # ==================================================
-    # EXPENSE LIST
-    # ==================================================
-
-    path(
-        '',
+        "list/",
         ExpenseListAPIView.as_view(),
-        name='expense-list'
+        name="expense-list"
     ),
 
-    # ==================================================
-    # EXPENSE DETAILS
-    # ==================================================
+    path(
+        "create/",
+        ExpenseCreateAPIView.as_view(),
+        name="expense-create"
+    ),
 
     path(
-        '<int:pk>/',
+        "<int:pk>/",
         ExpenseDetailAPIView.as_view(),
-        name='expense-detail'
+        name="expense-detail"
     ),
 
-    # ==================================================
-    # UPDATE EXPENSE
-    # ==================================================
-
     path(
-        'update/<int:pk>/',
+        "<int:pk>/update/",
         ExpenseUpdateAPIView.as_view(),
-        name='expense-update'
+        name="expense-update"
     ),
 
-    # ==================================================
-    # DELETE EXPENSE
-    # ==================================================
-
     path(
-        'delete/<int:pk>/',
+        "<int:pk>/delete/",
         ExpenseDeleteAPIView.as_view(),
-        name='expense-delete'
+        name="expense-delete"
     ),
 ]

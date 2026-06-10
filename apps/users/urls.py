@@ -1,6 +1,19 @@
 from django.urls import path
 
 from .views import (
+    LoginAPIView,
+    LogoutAPIView,
+
+    ProfileAPIView,
+    ProfileUpdateAPIView,
+
+    ChangePasswordAPIView,
+
+    ForgotPasswordAPIView,
+    ResetPasswordAPIView,
+
+    RemoveAvatarAPIView,
+
     UserCreateAPIView,
     UserListAPIView,
     UserDetailAPIView,
@@ -10,38 +23,89 @@ from .views import (
 
 urlpatterns = [
 
-    # List Users
+    # =====================================================
+    # AUTH
+    # =====================================================
+
     path(
-        '',
+        "login/",
+        LoginAPIView.as_view(),
+        name="login"
+    ),
+
+    path(
+        "logout/",
+        LogoutAPIView.as_view(),
+        name="logout"
+    ),
+
+    path(
+        "profile/",
+        ProfileAPIView.as_view(),
+        name="profile"
+    ),
+
+    path(
+        "profile/update/",
+        ProfileUpdateAPIView.as_view(),
+        name="profile_update"
+    ),
+
+    path(
+        "change-password/",
+        ChangePasswordAPIView.as_view(),
+        name="change_password"
+    ),
+
+    path(
+        "forgot-password/",
+        ForgotPasswordAPIView.as_view(),
+        name="forgot_password"
+    ),
+
+    path(
+        "reset-password/",
+        ResetPasswordAPIView.as_view(),
+        name="reset_password"
+    ),
+
+    path(
+        "profile/avatar/remove/",
+        RemoveAvatarAPIView.as_view(),
+        name="remove_avatar"
+    ),
+
+    # =====================================================
+    # USERS CRUD
+    # =====================================================
+
+    path(
+        "",
         UserListAPIView.as_view(),
-        name='user-list'
+        name="user_list"
     ),
 
-    # Create User
     path(
-        'create/',
+        "create/",
         UserCreateAPIView.as_view(),
-        name='user-create'
+        name="user_create"
     ),
 
-    # User Detail
     path(
-        '<int:pk>/',
+        "<int:pk>/",
         UserDetailAPIView.as_view(),
-        name='user-detail'
+        name="user_detail"
     ),
 
-    # Update User
     path(
-        '<int:pk>/update/',
+        "<int:pk>/update/",
         UserUpdateAPIView.as_view(),
-        name='user-update'
+        name="user_update"
     ),
 
-    # Deactivate User
     path(
-        '<int:pk>/delete/',
+        "<int:pk>/delete/",
         UserDeleteAPIView.as_view(),
-        name='user-delete'
+        name="user_delete"
     ),
 ]

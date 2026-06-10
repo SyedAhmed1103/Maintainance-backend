@@ -5,7 +5,14 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import Building
-from .serializers import BuildingSerializer
+from .serializers import BuildingSerializer,PublicBuildingSerializer
+from rest_framework.parsers import (
+    MultiPartParser,
+    FormParser,
+)
+
+from apps.media_manager.models import Media
+from apps.media_manager.services import MediaService
 
 
 # =========================================================
@@ -17,6 +24,11 @@ class BuildingCreateAPIView(generics.CreateAPIView):
     queryset = Building.objects.all()
     serializer_class = BuildingSerializer
 
+    parser_classes = (
+        MultiPartParser,
+        FormParser,
+    )
+
     def create(self, request, *args, **kwargs):
 
         serializer = self.get_serializer(
@@ -25,17 +37,34 @@ class BuildingCreateAPIView(generics.CreateAPIView):
 
         if serializer.is_valid():
 
-            serializer.save(
-                created_by=request.user
-                if request.user.is_authenticated
-                else None
+            building = serializer.save()
+
+            building_image = request.FILES.get(
+                "building_image"
+            )
+
+            if building_image:
+
+                MediaService.upload_single(
+                    instance=building,
+                    file=building_image,
+                    category=Media.Category.BUILDING_IMAGE,
+                )
+
+            response_serializer = (
+                BuildingSerializer(
+                    building,
+                    context={
+                        "request": request
+                    }
+                )
             )
 
             return Response(
                 {
                     "success": True,
                     "message": "Building created successfully.",
-                    "data": serializer.data
+                    "data": response_serializer.data
                 },
                 status=status.HTTP_201_CREATED
             )
@@ -48,11 +77,27 @@ class BuildingCreateAPIView(generics.CreateAPIView):
             },
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+
+
 
 
 # =========================================================
 # BUILDING LIST
 # =========================================================
+
+
+from rest_framework.permissions import AllowAny
+
+class PublicBuildingListAPIView(generics.ListAPIView):
+    serializer_class = PublicBuildingSerializer
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get_queryset(self):
+        return Building.objects.filter(
+            is_active=True
+        ).order_by('building_name')
 
 class BuildingListAPIView(generics.ListAPIView):
 
@@ -70,9 +115,6 @@ class BuildingListAPIView(generics.ListAPIView):
             ''
         )
 
-        queryset = Building.objects.select_related(
-            'created_by'
-        ).order_by('-id')
 
         if is_active == '':
             queryset = queryset.filter(
@@ -137,10 +179,7 @@ class BuildingListAPIView(generics.ListAPIView):
 
 class BuildingDetailAPIView(generics.RetrieveAPIView):
 
-    queryset = Building.objects.select_related(
-        'created_by'
-    )
-
+    queryset = Building.objects.all()
     serializer_class = BuildingSerializer
     lookup_field = 'pk'
 
@@ -172,6 +211,11 @@ class BuildingUpdateAPIView(generics.UpdateAPIView):
     serializer_class = BuildingSerializer
     lookup_field = 'pk'
 
+    parser_classes = (
+        MultiPartParser,
+        FormParser,
+    )
+
     def update(self, request, *args, **kwargs):
 
         partial = kwargs.pop(
@@ -189,13 +233,34 @@ class BuildingUpdateAPIView(generics.UpdateAPIView):
 
         if serializer.is_valid():
 
-            serializer.save()
+            building = serializer.save()
+
+            building_image = request.FILES.get(
+                "building_image"
+            )
+
+            if building_image:
+
+                MediaService.replace_single(
+                    instance=building,
+                    file=building_image,
+                    category=Media.Category.BUILDING_IMAGE,
+                )
+
+            response_serializer = (
+                BuildingSerializer(
+                    building,
+                    context={
+                        "request": request
+                    }
+                )
+            )
 
             return Response(
                 {
                     "success": True,
                     "message": "Building updated successfully.",
-                    "data": serializer.data
+                    "data": response_serializer.data
                 },
                 status=status.HTTP_200_OK
             )
@@ -218,8 +283,7 @@ class BuildingUpdateAPIView(generics.UpdateAPIView):
             *args,
             **kwargs
         )
-
-
+    
 # =========================================================
 # DEACTIVATE BUILDING
 # =========================================================

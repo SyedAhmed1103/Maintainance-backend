@@ -1,8 +1,10 @@
+# apps/complaint/urls.py
+
 from django.urls import path
 
 from .views import (
-    ComplaintCreateAPIView,
     ComplaintListAPIView,
+    ComplaintCreateAPIView,
     ComplaintDetailAPIView,
     ComplaintUpdateAPIView,
     ComplaintDeleteAPIView,
@@ -10,53 +12,33 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE COMPLAINT
-    # ==================================================
-
     path(
-        'create/',
-        ComplaintCreateAPIView.as_view(),
-        name='complaint-create'
-    ),
-
-    # ==================================================
-    # COMPLAINT LIST
-    # ==================================================
-
-    path(
-        '',
+        "",
         ComplaintListAPIView.as_view(),
-        name='complaint-list'
+        name="complaint-list",
     ),
 
-    # ==================================================
-    # COMPLAINT DETAILS
-    # ==================================================
+    path(
+        "create/",
+        ComplaintCreateAPIView.as_view(),
+        name="complaint-create",
+    ),
 
     path(
-        '<int:pk>/',
+        "<int:pk>/",
         ComplaintDetailAPIView.as_view(),
-        name='complaint-detail'
+        name="complaint-detail",
     ),
 
-    # ==================================================
-    # UPDATE COMPLAINT
-    # ==================================================
-
     path(
-        'update/<int:pk>/',
+        "<int:pk>/update/",
         ComplaintUpdateAPIView.as_view(),
-        name='complaint-update'
+        name="complaint-update",
     ),
 
-    # ==================================================
-    # DELETE COMPLAINT
-    # ==================================================
-
     path(
-        'delete/<int:pk>/',
+        "<int:pk>/delete/",
         ComplaintDeleteAPIView.as_view(),
-        name='complaint-delete'
+        name="complaint-delete",
     ),
 ]

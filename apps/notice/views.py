@@ -1,14 +1,11 @@
-from django.shortcuts import render
-
-# Create your views here.
-from django.db.models import Q
-
-from rest_framework import generics
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework import status
 
 from .models import Notice
 from .serializers import NoticeSerializer
+
+from apps.media_manager.models import Media
+from apps.media_manager.services import MediaService
 
 
 # =========================================================
@@ -26,26 +23,34 @@ class NoticeCreateAPIView(generics.CreateAPIView):
             data=request.data
         )
 
-        if serializer.is_valid():
+        serializer.is_valid(
+            raise_exception=True
+        )
 
-            serializer.save()
+        notice = serializer.save()
 
-            return Response(
-                {
-                    "success": True,
-                    "message": "Notice created successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_201_CREATED
+        attachment = request.FILES.get(
+            "attachment"
+        )
+
+        if attachment:
+
+            MediaService.upload_single(
+                instance=notice,
+                file=attachment,
+                category=Media.Category.NOTICE_ATTACHMENT,
+                media_type=Media.MediaType.DOCUMENT,
             )
 
         return Response(
             {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
+                "success": True,
+                "message": "Notice created successfully.",
+                "data": NoticeSerializer(
+                    notice
+                ).data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_201_CREATED
         )
 
 
@@ -53,62 +58,27 @@ class NoticeCreateAPIView(generics.CreateAPIView):
 # NOTICE LIST
 # =========================================================
 
-class NoticeListAPIView(generics.ListAPIView):
+class NoticeListAPIView(
+    generics.ListAPIView
+):
 
     serializer_class = NoticeSerializer
 
     def get_queryset(self):
 
-        search = self.request.GET.get(
-            'search',
-            ''
-        )
-
-        building_id = self.request.GET.get(
-            'building_id',
-            ''
-        )
-
-        is_active = self.request.GET.get(
-            'is_active',
-            ''
-        )
-
-        queryset = Notice.objects.select_related(
-            'building'
-        ).order_by('-created_at')
-
-        if search:
-
-            queryset = queryset.filter(
-                Q(title__icontains=search) |
-                Q(description__icontains=search) |
-                Q(
-                    building__building_name__icontains=search
-                )
+        return (
+            Notice.objects
+            .filter(
+                is_active=True
             )
-
-        if building_id:
-
-            queryset = queryset.filter(
-                building_id=building_id
+            .select_related(
+                "building",
+                "created_by"
             )
-
-        if is_active != '':
-
-            if is_active.lower() == 'true':
-
-                queryset = queryset.filter(
-                    is_active=True
-                )
-
-            elif is_active.lower() == 'false':
-
-                queryset = queryset.filter(
-                    is_active=False
-                )
-
-        return queryset
+            .order_by(
+                "-created_at"
+            )
+        )
 
     def list(self, request, *args, **kwargs):
 
@@ -122,7 +92,7 @@ class NoticeListAPIView(generics.ListAPIView):
         return Response(
             {
                 "success": True,
-                "message": "Notice list fetched successfully.",
+                "message": "Notices fetched successfully.",
                 "count": queryset.count(),
                 "data": serializer.data
             },
@@ -131,24 +101,81 @@ class NoticeListAPIView(generics.ListAPIView):
 
 
 # =========================================================
-# NOTICE DETAILS
+# BUILDING NOTICE LIST
 # =========================================================
 
-class NoticeDetailAPIView(generics.RetrieveAPIView):
+class BuildingNoticeListAPIView(
+    generics.ListAPIView
+):
 
-    queryset = Notice.objects.select_related(
-        'building'
+    serializer_class = NoticeSerializer
+
+    def get_queryset(self):
+
+        building_id = self.kwargs.get(
+            "building_id"
+        )
+
+        return (
+            Notice.objects
+            .filter(
+                building_id=building_id,
+                is_active=True
+            )
+            .select_related(
+                "building",
+                "created_by"
+            )
+            .order_by(
+                "-created_at"
+            )
+        )
+
+    def list(self, request, *args, **kwargs):
+
+        queryset = self.get_queryset()
+
+        serializer = self.get_serializer(
+            queryset,
+            many=True
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Building notices fetched successfully.",
+                "count": queryset.count(),
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+
+
+# =========================================================
+# NOTICE DETAIL
+# =========================================================
+
+class NoticeDetailAPIView(
+    generics.RetrieveAPIView
+):
+
+    queryset = (
+        Notice.objects
+        .select_related(
+            "building",
+            "created_by"
+        )
     )
 
     serializer_class = NoticeSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
 
     def retrieve(self, request, *args, **kwargs):
 
-        instance = self.get_object()
+        notice = self.get_object()
 
         serializer = self.get_serializer(
-            instance
+            notice
         )
 
         return Response(
@@ -165,52 +192,62 @@ class NoticeDetailAPIView(generics.RetrieveAPIView):
 # UPDATE NOTICE
 # =========================================================
 
-class NoticeUpdateAPIView(generics.UpdateAPIView):
+class NoticeUpdateAPIView(
+    generics.UpdateAPIView
+):
 
     queryset = Notice.objects.all()
     serializer_class = NoticeSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
 
     def update(self, request, *args, **kwargs):
 
         partial = kwargs.pop(
-            'partial',
+            "partial",
             False
         )
 
-        instance = self.get_object()
+        notice = self.get_object()
 
         serializer = self.get_serializer(
-            instance,
+            notice,
             data=request.data,
             partial=partial
         )
 
-        if serializer.is_valid():
+        serializer.is_valid(
+            raise_exception=True
+        )
 
-            serializer.save()
+        notice = serializer.save()
 
-            return Response(
-                {
-                    "success": True,
-                    "message": "Notice updated successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_200_OK
+        attachment = request.FILES.get(
+            "attachment"
+        )
+
+        if attachment:
+
+            MediaService.replace_single(
+                instance=notice,
+                file=attachment,
+                category=Media.Category.NOTICE_ATTACHMENT,
+                media_type=Media.MediaType.DOCUMENT,
             )
 
         return Response(
             {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
+                "success": True,
+                "message": "Notice updated successfully.",
+                "data": NoticeSerializer(
+                    notice
+                ).data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_200_OK
         )
 
     def patch(self, request, *args, **kwargs):
 
-        kwargs['partial'] = True
+        kwargs["partial"] = True
 
         return self.update(
             request,
@@ -220,20 +257,29 @@ class NoticeUpdateAPIView(generics.UpdateAPIView):
 
 
 # =========================================================
-# DELETE NOTICE
+# SOFT DELETE NOTICE
 # =========================================================
 
-class NoticeDeleteAPIView(generics.DestroyAPIView):
+class NoticeDeleteAPIView(
+    generics.UpdateAPIView
+):
 
     queryset = Notice.objects.all()
     serializer_class = NoticeSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
 
-    def destroy(self, request, *args, **kwargs):
+    def patch(self, request, *args, **kwargs):
 
-        instance = self.get_object()
+        notice = self.get_object()
 
-        instance.delete()
+        notice.is_active = False
+
+        notice.save(
+            update_fields=[
+                "is_active",
+                "updated_at"
+            ]
+        )
 
         return Response(
             {

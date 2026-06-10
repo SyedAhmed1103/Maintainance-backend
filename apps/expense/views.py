@@ -1,158 +1,101 @@
-from django.db.models import Q
+# views.py
 
-from rest_framework import generics
+from django.utils import timezone
+
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework import status
 
 from .models import Expense
 from .serializers import ExpenseSerializer
 
 
-# =========================================================
-# CREATE EXPENSE
-# =========================================================
-
-class ExpenseCreateAPIView(generics.CreateAPIView):
-
-    queryset = Expense.objects.all()
-    serializer_class = ExpenseSerializer
-
-    def create(self, request, *args, **kwargs):
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
-
-        if serializer.is_valid():
-
-            serializer.save()
-
-            return Response(
-                {
-                    "success": True,
-                    "message": "Expense created successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
-
-        return Response(
-            {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-# =========================================================
-# EXPENSE LIST
-# =========================================================
-
 class ExpenseListAPIView(generics.ListAPIView):
-
     serializer_class = ExpenseSerializer
 
     def get_queryset(self):
-
-        search = self.request.GET.get(
-            'search',
-            ''
+        queryset = (
+            Expense.objects
+            .filter(is_deleted=False)
+            .select_related("building")
+            .order_by("-expense_date", "-id")
         )
 
-        building_id = self.request.GET.get(
-            'building_id',
-            ''
-        )
-
-        queryset = Expense.objects.select_related(
-            'building'
-        ).order_by('-expense_date')
-
-        if search:
-
-            queryset = queryset.filter(
-                Q(expense_type__icontains=search) |
-                Q(description__icontains=search) |
-                Q(
-                    building__building_name__icontains=search
-                )
-            )
+        building_id = self.request.query_params.get("building_id")
+        year = self.request.query_params.get("year")
+        month = self.request.query_params.get("month")
+        expense_type = self.request.query_params.get("expense_type")
 
         if building_id:
-
             queryset = queryset.filter(
                 building_id=building_id
             )
 
+        if year:
+            queryset = queryset.filter(
+                expense_date__year=year
+            )
+
+        if month:
+            queryset = queryset.filter(
+                expense_date__month=month
+            )
+
+        if expense_type:
+            queryset = queryset.filter(
+                expense_type__icontains=expense_type
+            )
+
         return queryset
 
-    def list(self, request, *args, **kwargs):
 
-        queryset = self.get_queryset()
+class ExpenseCreateAPIView(generics.CreateAPIView):
+    serializer_class = ExpenseSerializer
 
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(
-            queryset,
-            many=True
+            data=request.data
         )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        serializer.save()
 
         return Response(
             {
                 "success": True,
-                "message": "Expense list fetched successfully.",
-                "count": queryset.count(),
+                "message": "Expense created successfully.",
                 "data": serializer.data
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_201_CREATED
         )
 
-
-# =========================================================
-# EXPENSE DETAILS
-# =========================================================
 
 class ExpenseDetailAPIView(generics.RetrieveAPIView):
-
-    queryset = Expense.objects.select_related(
-        'building'
-    )
-
     serializer_class = ExpenseSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
 
-    def retrieve(self, request, *args, **kwargs):
-
-        instance = self.get_object()
-
-        serializer = self.get_serializer(
-            instance
+    def get_queryset(self):
+        return (
+            Expense.objects
+            .filter(is_deleted=False)
+            .select_related("building")
         )
 
-        return Response(
-            {
-                "success": True,
-                "message": "Expense details fetched successfully.",
-                "data": serializer.data
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-# =========================================================
-# UPDATE EXPENSE
-# =========================================================
 
 class ExpenseUpdateAPIView(generics.UpdateAPIView):
-
-    queryset = Expense.objects.all()
     serializer_class = ExpenseSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
+
+    def get_queryset(self):
+        return Expense.objects.filter(
+            is_deleted=False
+        )
 
     def update(self, request, *args, **kwargs):
-
         partial = kwargs.pop(
-            'partial',
+            "partial",
             False
         )
 
@@ -164,54 +107,43 @@ class ExpenseUpdateAPIView(generics.UpdateAPIView):
             partial=partial
         )
 
-        if serializer.is_valid():
+        serializer.is_valid(
+            raise_exception=True
+        )
 
-            serializer.save()
-
-            return Response(
-                {
-                    "success": True,
-                    "message": "Expense updated successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_200_OK
-            )
+        serializer.save()
 
         return Response(
             {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
+                "success": True,
+                "message": "Expense updated successfully.",
+                "data": serializer.data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_200_OK
         )
 
-    def patch(self, request, *args, **kwargs):
-
-        kwargs['partial'] = True
-
-        return self.update(
-            request,
-            *args,
-            **kwargs
-        )
-
-
-# =========================================================
-# DELETE EXPENSE
-# =========================================================
 
 class ExpenseDeleteAPIView(generics.DestroyAPIView):
-
-    queryset = Expense.objects.all()
     serializer_class = ExpenseSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
+
+    def get_queryset(self):
+        return Expense.objects.filter(
+            is_deleted=False
+        )
 
     def destroy(self, request, *args, **kwargs):
-
         instance = self.get_object()
 
-        instance.delete()
+        instance.is_deleted = True
+        instance.deleted_at = timezone.now()
+
+        instance.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at"
+            ]
+        )
 
         return Response(
             {

@@ -1,151 +1,154 @@
+# apps/complaint/serializers.py
+
+from django.contrib.contenttypes.models import ContentType
+
 from rest_framework import serializers
 
 from .models import Complaint
+
+from apps.media_manager.models import Media
+from apps.media_manager.serializers import MediaSerializer
 
 
 class ComplaintSerializer(serializers.ModelSerializer):
 
     building_name = serializers.CharField(
-        source='building.building_name',
+        source="building.name",
         read_only=True
     )
 
-    flat_number = serializers.SerializerMethodField()
+    flat_name = serializers.CharField(
+        source="flat.flat_number",
+        read_only=True
+    )
 
     user_name = serializers.SerializerMethodField()
 
-    class Meta:
+    attachments = serializers.SerializerMethodField()
 
+    class Meta:
         model = Complaint
 
-        fields = [
-            'id',
-            'building',
-            'building_name',
-            'flat',
-            'flat_number',
-            'user',
-            'user_name',
-            'title',
-            'description',
-            'admin_remark',
-            'status',
-            'created_at',
-            'updated_at',
-        ]
+        fields = (
+            "id",
 
-        read_only_fields = [
-            'id',
-            'building_name',
-            'flat_number',
-            'user_name',
-            'created_at',
-            'updated_at',
-        ]
+            "building",
+            "building_name",
 
-    # ==================================================
-    # CUSTOM METHODS
-    # ==================================================
+            "flat",
+            "flat_name",
 
-    def get_flat_number(self, obj):
+            "user",
+            "user_name",
 
-        return (
-            f"{obj.flat.wing}-"
-            f"{obj.flat.flat_number}"
+            "title",
+            "description",
+
+            "admin_remark",
+            "status",
+
+            "attachments",
+
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+
+            "building_name",
+            "flat_name",
+            "user_name",
+
+            "admin_remark",
+            "status",
+
+            "attachments",
+
+            "created_at",
+            "updated_at",
         )
 
     def get_user_name(self, obj):
 
-        return (
-            f"{obj.user.first_name} "
-            f"{obj.user.last_name or ''}"
-        ).strip()
+        if hasattr(obj.user, "get_full_name"):
+            full_name = obj.user.get_full_name()
 
-    # ==================================================
-    # FIELD VALIDATIONS
-    # ==================================================
+            if full_name:
+                return full_name
+
+        return str(obj.user)
+
+    def get_attachments(self, obj):
+
+        content_type = ContentType.objects.get_for_model(
+            Complaint
+        )
+
+        attachments = Media.objects.filter(
+            content_type=content_type,
+            object_id=obj.id,
+            category=Media.Category.COMPLAINT_ATTACHMENT,
+            is_active=True,
+        ).order_by(
+            "display_order",
+            "id"
+        )
+
+        return MediaSerializer(
+            attachments,
+            many=True,
+            context=self.context,
+        ).data
 
     def validate_title(self, value):
 
         value = value.strip()
 
-        if len(value) < 3:
-
+        if not value:
             raise serializers.ValidationError(
-                "Title must be at least 3 characters long."
+                "Title is required."
             )
 
-        return value.title()
+        if len(value) < 3:
+            raise serializers.ValidationError(
+                "Title must be at least 3 characters."
+            )
+
+        return value
 
     def validate_description(self, value):
 
         value = value.strip()
 
-        if len(value) < 10:
-
+        if not value:
             raise serializers.ValidationError(
-                "Description must be at least 10 characters long."
+                "Description is required."
+            )
+
+        if len(value) < 10:
+            raise serializers.ValidationError(
+                "Description must be at least 10 characters."
             )
 
         return value
 
-    def validate_admin_remark(self, value):
-
-        if value:
-
-            return value.strip()
-
-        return value
-
-    # ==================================================
-    # OBJECT LEVEL VALIDATION
-    # ==================================================
-
     def validate(self, attrs):
 
-        building = attrs.get(
-            'building',
-            self.instance.building
-            if self.instance else None
-        )
+        building = attrs.get("building")
+        flat = attrs.get("flat")
 
-        flat = attrs.get(
-            'flat',
-            self.instance.flat
-            if self.instance else None
-        )
-
-        user = attrs.get(
-            'user',
-            self.instance.user
-            if self.instance else None
-        )
-
-        if flat and building:
-
+        if (
+            building and
+            flat and
+            hasattr(flat, "building_id")
+        ):
             if flat.building_id != building.id:
-
-                raise serializers.ValidationError({
-                    "flat":
-                    "Selected flat does not belong to selected building."
-                })
-
-        if user and building:
-
-            if user.building_id != building.id:
-
-                raise serializers.ValidationError({
-                    "user":
-                    "Selected user does not belong to selected building."
-                })
-
-        if user and flat:
-
-            if user.flat_id != flat.id:
-
-                raise serializers.ValidationError({
-                    "user":
-                    "Selected user does not belong to selected flat."
-                })
+                raise serializers.ValidationError(
+                    {
+                        "flat":
+                        "Selected flat does not belong to the selected building."
+                    }
+                )
 
         return attrs

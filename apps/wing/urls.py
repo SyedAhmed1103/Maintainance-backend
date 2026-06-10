@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     WingCreateAPIView,
     WingListAPIView,
+    WingByBuildingAPIView,
     WingDetailAPIView,
     WingUpdateAPIView,
     WingDeleteAPIView,
@@ -15,6 +16,11 @@ urlpatterns = [
         '',
         WingListAPIView.as_view(),
         name='wing-list'
+    ),
+    path(
+        'wings/building/<int:building_id>/',
+        WingByBuildingAPIView.as_view(),
+        name='wing-by-building'
     ),
 
     # Create Wing

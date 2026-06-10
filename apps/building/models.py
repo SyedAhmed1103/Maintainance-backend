@@ -52,14 +52,6 @@ class Building(models.Model):
         default='residential'
     )
 
-    created_by = models.ForeignKey(
-        'users.User',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='buildings'
-    )
-
     is_active = models.BooleanField(
         default=True
     )

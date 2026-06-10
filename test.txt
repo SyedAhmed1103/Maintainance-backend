@@ -1,0 +1,203 @@
+SHELL 
+python manage.py shell
+exit()
+
+
+1] Building Created By Shell   SUCCESS
+--------------------------------------------------------------------------
+
+from apps.buildings.models import Building
+from apps.users.models import User
+
+user = User.objects.first()
+
+building = Building.objects.create(
+    building_name="Aaastha Riverview",
+    building_code="ARV001",
+    address="Aaastha Riverview, Belapurpada",
+    city="Navi Mumbai",
+    state="Maharashtra",
+    pincode="400614",
+    total_floors=15,
+    society_email="info@aaasthariverview.com",
+    society_mobile="9876543210",
+    building_type="residential",
+    created_by=user,
+    is_active=True
+)
+
+print(building.id)
+
+building ID 6 
+
+--------------------------------------------------------------------------
+2] Admin Create By Shell Assigned to building 6
+--------------------------------------------------------------------------
+
+
+from apps.users.models import User
+from apps.buildings.models import Building
+
+building = Building.objects.get(id=1)
+
+admin_user = User.objects.create_superuser(
+    email="admin@aaastha.com",
+    mobile="9876543210",
+    password="Admin@123",
+    first_name="Admin",
+    last_name="User",
+    building=building
+)
+
+print(admin_user.id)
+print(admin_user.email)
+
+
+ADMIN USER ID 1
+--------------------------------------------------------------------------
+3] Forgot Password Admin 
+--------------------------------------------------------------------------
+
+from apps.users.models import User
+
+user = User.objects.get(email="admin@aaastha.com") 
+
+user.set_password("NewPassword@123")
+user.save()
+
+print("Password updated successfully")
+
+--------------------------------------------------------------------------
+4] Admin Login
+--------------------------------------------------------------------------
+http://127.0.0.1:8000/api/buildings/public/  GET BUILDING ID
+POST http://127.0.0.1:8000/api/users/login/
+
+
+{
+  "building_id": 6,
+  "username": "admin@aaastha.com",
+  "password": "NewPassword@123"
+}
+
+"access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzgxMDc5ODY2LCJpYXQiOjE3ODEwNzI2NjYsImp0aSI6ImFhNTNiYTZmZDcwYjRiMDhiZWI2NDcxNWE4MmI5MmEyIiwidXNlcl9pZCI6MTEsImVtYWlsIjoiYWRtaW5AYWFhc3RoYS5jb20iLCJtb2JpbGUiOiI5ODc2NTQzMjEwIiwidXNlcl90eXBlIjoiYWRtaW4iLCJidWlsZGluZ19pZCI6NiwiZmxhdF9pZCI6bnVsbH0.R_XmkR1JNBy_CBQtAwpCPy0g_VELe0hloflaselgZUg"
+
+
+BUILDING ID 
+USER ID 
+ACCESS 
+REFRESH
+
+LOCAL STORAGE WILL GET STORED ACCESS BUILDING ID USER ID (REVERSE KRKE)
+Login
+↓
+Access Token (2 hr)
+Refresh Token (7 days)
+
+2 hr baad
+↓
+API -> 401
+↓
+Refresh API Call
+↓
+New Access Token
+↓
+Original API Retry
+↓
+Success
+--------------------------------------------------------------------------
+NOW USER LOGGED IN NOW ALL UNDER AUTH 
+--------------------------------------------------------------------------
+http://127.0.0.1:8000/api/users/logout/ 
+LOGOUT : {
+  "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc4MTY4NjYzMSwiaWF0IjoxNzgxMDgxODMxLCJqdGkiOiI5M2UyNzBjYzMxZmQ0ZGIyOTQyYzQ4ZTc1NTAwYzNiMyIsInVzZXJfaWQiOjExLCJlbWFpbCI6ImFkbWluQGFhYXN0aGEuY29tIiwibW9iaWxlIjoiOTg3NjU0MzIxMCIsInVzZXJfdHlwZSI6ImFkbWluIiwiYnVpbGRpbmdfaWQiOjYsImZsYXRfaWQiOm51bGx9.KZTCWXZ0kOukmWFNbfINDw1mKkuJAHlGfJpUh2Qk-hk"
+}
+ Logout
+↓
+Refresh Token Blacklist
+↓
+Frontend Tokens Delete
+↓
+Login Screen
+
+
+5] GET BUILDING BY ID 
+--------------------------------------------------------------------------
+
+ GET http://127.0.0.1:8000/api/buildings/6/
+
+ {
+  "success": true,
+  "message": "Building details fetched successfully.",
+  "data": {
+    "id": 6,
+    "building_name": "Aaastha Riverview",
+    "building_code": "ARV001",
+    "address": "Aaastha Riverview, Belapurpada",
+    "city": "Navi Mumbai",
+    "state": "Maharashtra",
+    "pincode": "400614",
+    "total_floors": 15,
+    "society_email": "info@aaasthariverview.com",
+    "society_mobile": "9876543210",
+    "building_type": "residential",
+    "building_image": null,
+    "created_by": null,
+    "created_by_name": null,
+    "is_active": true,
+    "created_at": "2026-06-10T11:37:12.945568+05:30",
+    "updated_at": "2026-06-10T11:37:12.945568+05:30"
+  }
+}
+
+--------------------------------------------------------------------------
+6] UPDATE BUILDING BY ID 
+--------------------------------------------------------------------------
+POST http://127.0.0.1:8000/api/buildings/6/update/
+
+SUCCESS
+
+--------------------------------------------------------------------------
+7] PROFILE (MY ACCOUNT)  GET 
+--------------------------------------------------------------------------
+http://127.0.0.1:8000/api/users/11/ 
+
+SUCCESSS
+
+--------------------------------------------------------------------------
+8] PROFILE (MY ACCOUNT)  UPDATE 
+--------------------------------------------------------------------------
+SUCCESSS
+
+--------------------------------------------------------------------------
+9] PROFILE (MY ACCOUNT)  PASSWORD CHANGE 
+--------------------------------------------------------------------------
+http://127.0.0.1:8000/api/users/change-password/
+SUCCESS
+
+--------------------------------------------------------------------------
+10] WINGS GET BY BUIILDING
+--------------------------------------------------------------------------
+http://127.0.0.1:8000/api/wings/wings/building/6/
+SUCCESS
+
+--------------------------------------------------------------------------
+11] WINGS ADD BY BUIILDING
+--------------------------------------------------------------------------
+http://127.0.0.1:8000/api/wings/create/
+{
+  "building": 0,
+  "wing_name": "string",
+  "is_active": true
+}
+SUCCESS
+12] Wings Update By Building 
+http://127.0.0.1:8000/api/wings/10/update/
+SUCCESS
+
+13] http://127.0.0.1:8000/api/wings/10/delete/
+
+14] FLAT BY BUILDING  http://127.0.0.1:8000/api/flats/flats/building/6/
+SUCCESS
+15] ADD FLAT
+

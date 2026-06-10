@@ -3,6 +3,7 @@ from django.urls import path
 from .views import (
     BuildingCreateAPIView,
     BuildingListAPIView,
+    PublicBuildingListAPIView,
     BuildingDetailAPIView,
     BuildingUpdateAPIView,
     BuildingDeleteAPIView,
@@ -11,17 +12,22 @@ from .views import (
 urlpatterns = [
 
     # Create Building
-    path(
-        '',
-        BuildingListAPIView.as_view(),
-        name='building-list'
+    # path(
+    #     '',
+    #     BuildingListAPIView.as_view(),
+    #     name='building-list'
+    # ),
+        path(
+        'public/',
+        PublicBuildingListAPIView.as_view(),
+        name='public-buildings'
     ),
 
-    path(
-        'create/',
-        BuildingCreateAPIView.as_view(),
-        name='building-create'
-    ),
+    # path(
+    #     'create/',
+    #     BuildingCreateAPIView.as_view(),
+    #     name='building-create'
+    # ),
 
     # Building Detail
     path(
@@ -38,9 +44,9 @@ urlpatterns = [
     ),
 
     # Deactivate Building
-    path(
-        '<int:pk>/delete/',
-        BuildingDeleteAPIView.as_view(),
-        name='building-delete'
-    ),
+    # path(
+    #     '<int:pk>/delete/',
+    #     BuildingDeleteAPIView.as_view(),
+    #     name='building-delete'
+    # ),
 ]

@@ -4,28 +4,30 @@ from django.db import models
 class Complaint(models.Model):
 
     STATUS_CHOICES = (
-        ('open', 'Open'),
-        ('in_progress', 'In Progress'),
-        ('resolved', 'Resolved'),
-        ('closed', 'Closed'),
+        ("open", "Open"),
+        ("in_progress", "In Progress"),
+        ("resolved", "Resolved"),
+        ("closed", "Closed"),
     )
 
     building = models.ForeignKey(
-        'building.Building',
+        "building.Building",
         on_delete=models.CASCADE,
-        related_name='complaints'
+        related_name="complaints",
+        db_index=True,
     )
 
     flat = models.ForeignKey(
-        'flats.Flat',
+        "flats.Flat",
         on_delete=models.CASCADE,
-        related_name='complaints'
+        related_name="complaints",
+        db_index=True,
     )
 
     user = models.ForeignKey(
-        'users.User',
+        "users.User",
         on_delete=models.CASCADE,
-        related_name='complaints'
+        related_name="complaints",
     )
 
     title = models.CharField(
@@ -35,14 +37,23 @@ class Complaint(models.Model):
     description = models.TextField()
 
     admin_remark = models.TextField(
-        blank=True,
-        null=True
+        blank=True
     )
 
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='open'
+        default="open",
+        db_index=True,
+    )
+
+    is_deleted = models.BooleanField(
+        default=False
+    )
+
+    deleted_at = models.DateTimeField(
+        null=True,
+        blank=True,
     )
 
     created_at = models.DateTimeField(
@@ -54,8 +65,19 @@ class Complaint(models.Model):
     )
 
     class Meta:
-        db_table = 'complaints'
-        ordering = ['-created_at']
+        db_table = "complaints"
+
+        ordering = [
+            "-created_at"
+        ]
+
+        indexes = [
+            models.Index(fields=["building"]),
+            models.Index(fields=["flat"]),
+            models.Index(fields=["user"]),
+            models.Index(fields=["status"]),
+            models.Index(fields=["created_at"]),
+        ]
 
     def __str__(self):
-        return self.title
+        return f"#{self.id} - {self.title}"

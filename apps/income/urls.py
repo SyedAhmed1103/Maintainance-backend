@@ -1,8 +1,8 @@
 from django.urls import path
 
 from .views import (
-    IncomeCreateAPIView,
     IncomeListAPIView,
+    IncomeCreateAPIView,
     IncomeDetailAPIView,
     IncomeUpdateAPIView,
     IncomeDeleteAPIView,
@@ -10,53 +10,33 @@ from .views import (
 
 urlpatterns = [
 
-    # ==================================================
-    # CREATE INCOME
-    # ==================================================
-
     path(
-        'create/',
-        IncomeCreateAPIView.as_view(),
-        name='income-create'
-    ),
-
-    # ==================================================
-    # INCOME LIST
-    # ==================================================
-
-    path(
-        '',
+        "list/",
         IncomeListAPIView.as_view(),
-        name='income-list'
+        name="income-list"
     ),
 
-    # ==================================================
-    # INCOME DETAILS
-    # ==================================================
+    path(
+        "create/",
+        IncomeCreateAPIView.as_view(),
+        name="income-create"
+    ),
 
     path(
-        '<int:pk>/',
+        "<int:pk>/",
         IncomeDetailAPIView.as_view(),
-        name='income-detail'
+        name="income-detail"
     ),
 
-    # ==================================================
-    # UPDATE INCOME
-    # ==================================================
-
     path(
-        'update/<int:pk>/',
+        "<int:pk>/update/",
         IncomeUpdateAPIView.as_view(),
-        name='income-update'
+        name="income-update"
     ),
 
-    # ==================================================
-    # DELETE INCOME
-    # ==================================================
-
     path(
-        'delete/<int:pk>/',
+        "<int:pk>/delete/",
         IncomeDeleteAPIView.as_view(),
-        name='income-delete'
+        name="income-delete"
     ),
 ]

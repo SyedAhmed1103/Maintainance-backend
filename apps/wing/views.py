@@ -108,6 +108,42 @@ class WingListAPIView(generics.ListAPIView):
 
 
 # =========================================================
+# GET WINGS BY BUILDING ID
+# =========================================================
+
+class WingByBuildingAPIView(generics.ListAPIView):
+
+    serializer_class = WingSerializer
+
+    def get_queryset(self):
+
+        building_id = self.kwargs.get('building_id')
+
+        return Wing.objects.filter(
+            building_id=building_id,
+            is_active=True
+        ).select_related('building').order_by('wing_name')
+
+    def list(self, request, *args, **kwargs):
+
+        queryset = self.get_queryset()
+
+        serializer = self.get_serializer(
+            queryset,
+            many=True
+        )
+
+        return Response(
+            {
+                "success": True,
+                "message": "Wings fetched successfully.",
+                "count": queryset.count(),
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )
+
+# =========================================================
 # WING DETAILS
 # =========================================================
 

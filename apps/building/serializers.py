@@ -1,11 +1,23 @@
 from rest_framework import serializers
 
 from .models import Building
+from django.contrib.contenttypes.models import ContentType
 
+from apps.media_manager.models import Media
+from apps.media_manager.serializers import MediaSerializer
+
+class PublicBuildingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Building
+        fields = [
+            "id",
+            "building_name",
+        ]
 
 class BuildingSerializer(serializers.ModelSerializer):
 
-    created_by_name = serializers.SerializerMethodField()
+    building_image = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Building
@@ -22,8 +34,7 @@ class BuildingSerializer(serializers.ModelSerializer):
             'society_email',
             'society_mobile',
             'building_type',
-            'created_by',
-            'created_by_name',
+            'building_image',
             'is_active',
             'created_at',
             'updated_at',
@@ -31,24 +42,39 @@ class BuildingSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             'id',
-            'created_by',
-            'created_by_name',
             'created_at',
             'updated_at',
+            'building_image',
+            
         ]
 
     # ==========================================
     # CUSTOM METHODS
     # ==========================================
 
-    def get_created_by_name(self, obj):
 
-        if not obj.created_by:
+    def get_building_image(self, obj):
+
+        content_type = (
+            ContentType.objects.get_for_model(
+                Building
+            )
+        )
+
+        media = Media.objects.filter(
+            content_type=content_type,
+            object_id=obj.id,
+            category=Media.Category.BUILDING_IMAGE,
+            is_active=True,
+        ).first()
+
+        if not media:
             return None
 
-        full_name = obj.created_by.get_full_name()
-
-        return full_name or obj.created_by.username
+        return MediaSerializer(
+            media,
+            context=self.context,
+        ).data
 
     # ==========================================
     # FIELD VALIDATIONS

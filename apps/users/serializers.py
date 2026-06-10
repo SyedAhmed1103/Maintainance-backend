@@ -1,26 +1,169 @@
+from django.contrib.contenttypes.models import ContentType
+
 from rest_framework import serializers
 
 from .models import User
+from apps.media_manager.models import Media
 
-class UserSerializer(serializers.ModelSerializer):
+
+# =========================================================
+# AVATAR MIXIN
+# =========================================================
+
+class AvatarMixin:
+
+    def get_avatar(self, obj):
+
+        try:
+
+            content_type = (
+                ContentType.objects.get_for_model(
+                    User
+                )
+            )
+
+            media = (
+                Media.objects.filter(
+                    content_type=content_type,
+                    object_id=obj.id,
+                    category=Media.Category.AVATAR,
+                    is_active=True
+                )
+                .first()
+            )
+
+            if not media:
+                return None
+
+            request = self.context.get(
+                "request"
+            )
+
+            if request and media.file:
+
+                return (
+                    request.build_absolute_uri(
+                        media.file.url
+                    )
+                )
+
+            return media.file_url
+
+        except Exception:
+            return None
+
+
+# =========================================================
+# USER LIST / DETAIL
+# =========================================================
+
+class UserSerializer(
+    AvatarMixin,
+    serializers.ModelSerializer
+):
+
+    full_name = serializers.ReadOnlyField()
 
     building_name = serializers.CharField(
-        source='building.building_name',
+        source="building.building_name",
         read_only=True
     )
 
-    full_name = serializers.SerializerMethodField()
+    flat_number = serializers.CharField(
+        source="flat.flat_number",
+        read_only=True
+    )
 
-    owned_flats = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = User
+
+        fields = [
+
+            "id",
+
+            "first_name",
+            "last_name",
+            "full_name",
+
+            "email",
+            "mobile",
+
+            "user_type",
+
+            "building",
+            "building_name",
+
+            "flat",
+            "flat_number",
+
+            "avatar",
+
+            "is_verified",
+            "verified_at",
+
+            "is_active",
+
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+            "verified_at",
+        ]
+
+
+# =========================================================
+# USER CREATE
+# =========================================================
+
+class UserCreateSerializer(
+    serializers.ModelSerializer
+):
 
     password = serializers.CharField(
         write_only=True,
-        required=False,
-        style={'input_type': 'password'}
+        min_length=6
     )
 
-    flat_ids = serializers.ListField(
-        child=serializers.IntegerField(),
+    class Meta:
+
+        model = User
+
+        fields = [
+
+            "first_name",
+            "last_name",
+
+            "email",
+            "mobile",
+
+            "password",
+
+            "user_type",
+
+            "building",
+            "flat",
+
+            "is_verified",
+            "is_active",
+        ]
+
+
+# =========================================================
+# USER UPDATE
+# =========================================================
+
+class UserUpdateSerializer(
+    serializers.ModelSerializer
+):
+
+    password = serializers.CharField(
         write_only=True,
         required=False
     )
@@ -30,186 +173,143 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
 
         fields = [
-            'id',
 
-            'first_name',
-            'last_name',
-            'full_name',
+            "first_name",
+            "last_name",
 
-            'email',
-            'password',
-            'mobile',
+            "email",
+            "mobile",
 
-            'user_type',
+            "password",
 
-            'building',
-            'building_name',
+            "user_type",
 
-            'flat_ids',
-            'owned_flats',
+            "building",
+            "flat",
 
-            'is_verified',
-            'is_active',
-
-            'created_at',
-            'updated_at',
+            "is_verified",
+            "is_active",
         ]
 
-        read_only_fields = [
-            'id',
-            'building_name',
-            'full_name',
-            'owned_flats',
-            'created_at',
-            'updated_at',
+
+# =========================================================
+# LOGIN
+# =========================================================
+
+class LoginSerializer(
+    serializers.Serializer
+):
+
+    building_id = serializers.IntegerField()
+
+    username = serializers.CharField()
+
+    password = serializers.CharField(
+        write_only=True
+    )
+
+
+# =========================================================
+# PROFILE
+# =========================================================
+
+class ProfileSerializer(
+    AvatarMixin,
+    serializers.ModelSerializer
+):
+
+    full_name = serializers.ReadOnlyField()
+
+    avatar = serializers.SerializerMethodField()
+
+    class Meta:
+
+        model = User
+
+        fields = [
+
+            "id",
+
+            "first_name",
+            "last_name",
+            "full_name",
+
+            "email",
+            "mobile",
+
+            "user_type",
+
+            "building",
+            "flat",
+
+            "avatar",
+
+            "is_verified",
+            "verified_at",
         ]
 
-    # ==================================================
-    # CUSTOM METHODS
-    # ==================================================
 
-    def get_full_name(self, obj):
+# =========================================================
+# CHANGE PASSWORD
+# =========================================================
 
-        return (
-            f"{obj.first_name} "
-            f"{obj.last_name or ''}"
-        ).strip()
+class ChangePasswordSerializer(
+    serializers.Serializer
+):
 
-    def get_owned_flats(self, obj):
+    old_password = serializers.CharField(
+        write_only=True
+    )
 
-        return [
-            {
-                "id": flat.id,
-                "flat_number": flat.flat_number,
-                "wing": flat.wing.wing_name,
-                "flat_type": flat.flat_type,
-            }
-            for flat in obj.flats.select_related(
-                'wing'
-            )
+    new_password = serializers.CharField(
+        write_only=True,
+        min_length=6
+    )
+
+
+# =========================================================
+# FORGOT PASSWORD
+# =========================================================
+
+class ForgotPasswordSerializer(
+    serializers.Serializer
+):
+
+    email = serializers.EmailField()
+
+
+# =========================================================
+# RESET PASSWORD
+# =========================================================
+
+class ResetPasswordSerializer(
+    serializers.Serializer
+):
+
+    token = serializers.CharField()
+
+    password = serializers.CharField(
+        write_only=True,
+        min_length=6
+    )
+
+
+# =========================================================
+# USER DROPDOWN
+# =========================================================
+
+class UserDropdownSerializer(
+    serializers.ModelSerializer
+):
+
+    full_name = serializers.ReadOnlyField()
+
+    class Meta:
+
+        model = User
+
+        fields = [
+            "id",
+            "full_name",
+            "user_type",
         ]
-
-    # ==================================================
-    # VALIDATIONS
-    # ==================================================
-
-    def validate_first_name(self, value):
-
-        value = value.strip()
-
-        if len(value) < 2:
-
-            raise serializers.ValidationError(
-                "First name must be at least 2 characters long."
-            )
-
-        return value.title()
-
-    def validate_last_name(self, value):
-
-        if not value:
-
-            return value
-
-        return value.strip().title()
-
-    def validate_email(self, value):
-
-        value = value.strip().lower()
-
-        queryset = User.objects.filter(
-            email__iexact=value
-        )
-
-        if self.instance:
-
-            queryset = queryset.exclude(
-                pk=self.instance.pk
-            )
-
-        if queryset.exists():
-
-            raise serializers.ValidationError(
-                "Email already exists."
-            )
-
-        return value
-
-    def validate_mobile(self, value):
-
-        value = value.strip()
-
-        if not value.isdigit():
-
-            raise serializers.ValidationError(
-                "Mobile number must contain only digits."
-            )
-
-        if not (10 <= len(value) <= 15):
-
-            raise serializers.ValidationError(
-                "Mobile number must be between 10 and 15 digits."
-            )
-
-        queryset = User.objects.filter(
-            mobile=value
-        )
-
-        if self.instance:
-
-            queryset = queryset.exclude(
-                pk=self.instance.pk
-            )
-
-        if queryset.exists():
-
-            raise serializers.ValidationError(
-                "Mobile number already exists."
-            )
-
-        return value
-
-    def create(self, validated_data):
-
-        validated_data.pop(
-            'flat_ids',
-            None
-        )
-
-        validated_data.pop(
-            'password',
-            None
-        )
-
-        return User.objects.create(
-            **validated_data
-        )
-
-
-    def update(
-        self,
-        instance,
-        validated_data
-    ):
-
-        validated_data.pop(
-            'flat_ids',
-            None
-        )
-
-        validated_data.pop(
-            'password',
-            None
-        )
-
-        for attr, value in validated_data.items():
-
-            setattr(
-                instance,
-                attr,
-                value
-            )
-
-        instance.save()
-
-        return instance

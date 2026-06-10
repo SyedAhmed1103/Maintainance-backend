@@ -1,158 +1,101 @@
-from django.db.models import Q
+# views.py
 
-from rest_framework import generics
+from django.utils import timezone
+
+from rest_framework import generics, status
 from rest_framework.response import Response
-from rest_framework import status
 
 from .models import Income
 from .serializers import IncomeSerializer
 
 
-# =========================================================
-# CREATE INCOME
-# =========================================================
-
-class IncomeCreateAPIView(generics.CreateAPIView):
-
-    queryset = Income.objects.all()
-    serializer_class = IncomeSerializer
-
-    def create(self, request, *args, **kwargs):
-
-        serializer = self.get_serializer(
-            data=request.data
-        )
-
-        if serializer.is_valid():
-
-            serializer.save()
-
-            return Response(
-                {
-                    "success": True,
-                    "message": "Income created successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_201_CREATED
-            )
-
-        return Response(
-            {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
-            },
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-
-# =========================================================
-# INCOME LIST
-# =========================================================
-
 class IncomeListAPIView(generics.ListAPIView):
-
     serializer_class = IncomeSerializer
 
     def get_queryset(self):
-
-        search = self.request.GET.get(
-            'search',
-            ''
+        queryset = (
+            Income.objects
+            .filter(is_deleted=False)
+            .select_related("building")
+            .order_by("-income_date", "-id")
         )
 
-        building_id = self.request.GET.get(
-            'building_id',
-            ''
-        )
-
-        queryset = Income.objects.select_related(
-            'building'
-        ).order_by('-income_date')
-
-        if search:
-
-            queryset = queryset.filter(
-                Q(income_type__icontains=search) |
-                Q(description__icontains=search) |
-                Q(
-                    building__building_name__icontains=search
-                )
-            )
+        building_id = self.request.query_params.get("building_id")
+        year = self.request.query_params.get("year")
+        month = self.request.query_params.get("month")
+        income_type = self.request.query_params.get("income_type")
 
         if building_id:
-
             queryset = queryset.filter(
                 building_id=building_id
             )
 
+        if year:
+            queryset = queryset.filter(
+                income_date__year=year
+            )
+
+        if month:
+            queryset = queryset.filter(
+                income_date__month=month
+            )
+
+        if income_type:
+            queryset = queryset.filter(
+                income_type__icontains=income_type
+            )
+
         return queryset
 
-    def list(self, request, *args, **kwargs):
 
-        queryset = self.get_queryset()
+class IncomeCreateAPIView(generics.CreateAPIView):
+    serializer_class = IncomeSerializer
 
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(
-            queryset,
-            many=True
+            data=request.data
         )
+
+        serializer.is_valid(
+            raise_exception=True
+        )
+
+        serializer.save()
 
         return Response(
             {
                 "success": True,
-                "message": "Income list fetched successfully.",
-                "count": queryset.count(),
+                "message": "Income created successfully.",
                 "data": serializer.data
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_201_CREATED
         )
 
-
-# =========================================================
-# INCOME DETAILS
-# =========================================================
 
 class IncomeDetailAPIView(generics.RetrieveAPIView):
-
-    queryset = Income.objects.select_related(
-        'building'
-    )
-
     serializer_class = IncomeSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
 
-    def retrieve(self, request, *args, **kwargs):
-
-        instance = self.get_object()
-
-        serializer = self.get_serializer(
-            instance
+    def get_queryset(self):
+        return (
+            Income.objects
+            .filter(is_deleted=False)
+            .select_related("building")
         )
 
-        return Response(
-            {
-                "success": True,
-                "message": "Income details fetched successfully.",
-                "data": serializer.data
-            },
-            status=status.HTTP_200_OK
-        )
-
-
-# =========================================================
-# UPDATE INCOME
-# =========================================================
 
 class IncomeUpdateAPIView(generics.UpdateAPIView):
-
-    queryset = Income.objects.all()
     serializer_class = IncomeSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
+
+    def get_queryset(self):
+        return Income.objects.filter(
+            is_deleted=False
+        )
 
     def update(self, request, *args, **kwargs):
-
         partial = kwargs.pop(
-            'partial',
+            "partial",
             False
         )
 
@@ -164,54 +107,43 @@ class IncomeUpdateAPIView(generics.UpdateAPIView):
             partial=partial
         )
 
-        if serializer.is_valid():
+        serializer.is_valid(
+            raise_exception=True
+        )
 
-            serializer.save()
-
-            return Response(
-                {
-                    "success": True,
-                    "message": "Income updated successfully.",
-                    "data": serializer.data
-                },
-                status=status.HTTP_200_OK
-            )
+        serializer.save()
 
         return Response(
             {
-                "success": False,
-                "message": "Validation error.",
-                "errors": serializer.errors
+                "success": True,
+                "message": "Income updated successfully.",
+                "data": serializer.data
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_200_OK
         )
 
-    def patch(self, request, *args, **kwargs):
-
-        kwargs['partial'] = True
-
-        return self.update(
-            request,
-            *args,
-            **kwargs
-        )
-
-
-# =========================================================
-# DELETE INCOME
-# =========================================================
 
 class IncomeDeleteAPIView(generics.DestroyAPIView):
-
-    queryset = Income.objects.all()
     serializer_class = IncomeSerializer
-    lookup_field = 'pk'
+    lookup_field = "pk"
+
+    def get_queryset(self):
+        return Income.objects.filter(
+            is_deleted=False
+        )
 
     def destroy(self, request, *args, **kwargs):
-
         instance = self.get_object()
 
-        instance.delete()
+        instance.is_deleted = True
+        instance.deleted_at = timezone.now()
+
+        instance.save(
+            update_fields=[
+                "is_deleted",
+                "deleted_at"
+            ]
+        )
 
         return Response(
             {

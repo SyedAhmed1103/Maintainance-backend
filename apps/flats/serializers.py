@@ -15,6 +15,11 @@ class FlatSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
+    flat_type_name = serializers.CharField(
+        source='flat_type.name',
+        read_only=True
+    )
+
     owner = serializers.SerializerMethodField()
 
     class Meta:
@@ -34,6 +39,7 @@ class FlatSerializer(serializers.ModelSerializer):
             'floor_number',
 
             'flat_type',
+            'flat_type_name',
 
             'owner',
 
@@ -51,6 +57,7 @@ class FlatSerializer(serializers.ModelSerializer):
             'id',
             'building_name',
             'wing_name',
+            'flat_type_name',
             'owner',
             'created_at',
             'updated_at',
@@ -63,7 +70,6 @@ class FlatSerializer(serializers.ModelSerializer):
     def get_owner(self, obj):
 
         if not obj.owner:
-
             return None
 
         return {
@@ -82,7 +88,6 @@ class FlatSerializer(serializers.ModelSerializer):
         value = value.strip().upper()
 
         if not value:
-
             raise serializers.ValidationError(
                 "Flat number is required."
             )
@@ -92,7 +97,6 @@ class FlatSerializer(serializers.ModelSerializer):
     def validate_floor_number(self, value):
 
         if value < 0:
-
             raise serializers.ValidationError(
                 "Floor number cannot be negative."
             )
@@ -102,7 +106,6 @@ class FlatSerializer(serializers.ModelSerializer):
     def validate_area_sqft(self, value):
 
         if value <= 0:
-
             raise serializers.ValidationError(
                 "Area must be greater than zero."
             )
@@ -130,6 +133,11 @@ class FlatSerializer(serializers.ModelSerializer):
             self.instance.flat_number if self.instance else None
         )
 
+        flat_type = attrs.get(
+            'flat_type',
+            self.instance.flat_type if self.instance else None
+        )
+
         # Wing belongs to Building
 
         if wing and building:
@@ -139,6 +147,17 @@ class FlatSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     "wing":
                     "Selected wing does not belong to selected building."
+                })
+
+        # Flat Type belongs to Building
+
+        if flat_type and building:
+
+            if flat_type.building_id != building.id:
+
+                raise serializers.ValidationError({
+                    "flat_type":
+                    "Selected flat type does not belong to selected building."
                 })
 
         # Unique Flat Per Wing
@@ -160,6 +179,93 @@ class FlatSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "flat_number":
                 "Flat already exists in this wing."
+            })
+
+        return attrs
+
+from .models import FlatType
+
+
+class FlatTypeSerializer(serializers.ModelSerializer):
+
+    building_name = serializers.CharField(
+        source='building.building_name',
+        read_only=True
+    )
+
+    class Meta:
+
+        model = FlatType
+
+        fields = [
+            'id',
+
+            'building',
+            'building_name',
+
+            'name',
+
+            'is_active',
+
+            'created_at',
+            'updated_at',
+        ]
+
+        read_only_fields = [
+            'id',
+            'building_name',
+            'created_at',
+            'updated_at',
+        ]
+
+    # ==================================================
+    # FIELD VALIDATIONS
+    # ==================================================
+
+    def validate_name(self, value):
+
+        value = value.strip()
+
+        if not value:
+
+            raise serializers.ValidationError(
+                "Flat type name is required."
+            )
+
+        return value
+
+    # ==================================================
+    # OBJECT LEVEL VALIDATION
+    # ==================================================
+
+    def validate(self, attrs):
+
+        building = attrs.get(
+            'building',
+            self.instance.building if self.instance else None
+        )
+
+        name = attrs.get(
+            'name',
+            self.instance.name if self.instance else None
+        )
+
+        queryset = FlatType.objects.filter(
+            building=building,
+            name__iexact=name
+        )
+
+        if self.instance:
+
+            queryset = queryset.exclude(
+                pk=self.instance.pk
+            )
+
+        if queryset.exists():
+
+            raise serializers.ValidationError({
+                "name":
+                "Flat type already exists in this building."
             })
 
         return attrs
